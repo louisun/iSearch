@@ -90,7 +90,7 @@ def search_database(word):
     conn.close()
 
 def add_word(word):
-    conn = sqlite3.connect('vocabulary.db')
+    conn = sqlite3.connect('/backup/Use/SearchWord/vocabulary.db')
     curs = conn.cursor()
     try:
         expl = search_online(word,printer=False)
