@@ -10,29 +10,35 @@ from getopt import getopt
 
 def colorfulPrint(raw):
     lines = raw.split('\n')
-    firstLine = True
+    highlight = True
+    detail = False
     for line in lines:
         if line:
-            if firstLine:
-                firstLine = False
-                print(colored(line,'white','on_green'))
+            if highlight:
+                highlight = False
+                print(colored(line,'white','on_green')+'\n')
+                continue
             elif line.startswith('例'):
                 print(line+'\n')
+                continue
+            elif line.startswith('【'):
+                highlight = True
+                print(colored(line,'white','on_green')+'\n')
+                highlight = False
+                detail = True
+                continue
+
+            if not detail:
+                print(colored(line+'\n','yellow'))
             else:
-                print(colored(line,'yellow'))
+                print(colored(line,'cyan')+'\n')
 
 def normalPrint(raw):
     lines = raw.split('\n')
     firstLine = True
     for line in lines:
         if line:
-            if firstLine:
-                firstLine = False
-                print(line)
-            elif line.startswith('例'):
-                print(line+'\n')
-            else:
-                print(line)
+            print(line+'\n')
 
 
 def search_online(word,printer=True):
@@ -49,32 +55,108 @@ def search_online(word,printer=True):
     res = requests.get(url, headers=myHeaders)
     data = res.text
     soup = BeautifulSoup(data, 'lxml')
+    expl = ''
+
+    # -----------------collins-----------------------
     collins = soup.find('div', id="collinsResult")
-    ls = []
-    expl=''
-    try:
+    ls1 = []
+    if collins:
         for s in collins.descendants:
             if isinstance(s, bs4.element.NavigableString):
                 if s.strip():
-                    ls.append(s.strip())
-        expl = expl + (' '.join(ls[:2])) + '\n'
-        line = ' '.join(ls[4:])
-        ls = re.sub('例：', '\n\n例：', line)
-        ls = re.sub(r'(\d+\. )', r'\n\n\1', ls)
-        expl = expl + ls
-    except:
-        print(colored('T_T 有道柯林斯也查询不到，现在改用金山词典查询'),'white','on_red')
-        return os.system('ici %s'%word)
-    else:
-        if printer:
-            colorfulPrint(expl)
-        return expl
+                    ls1.append(s.strip())
+
+        expl = expl + (' '.join(ls1[:2])) + '\n'
+
+        line = ' '.join(ls1[4:])            
+        text1 = re.sub('例：', '\n\n例：', line)
+        text1 = re.sub(r'(\d+\. )', r'\n\n\1', text1)
+        text1 = re.sub(r'(\s+?→\s+)',r'  →  ',text1)
+        text1 = re.sub('(\")','\'',text1)
+        text1 = re.sub('\s{10}\s+','',text1)
+        expl = expl + text1
+
+
+
+    # --------------wordGroup-----------------------
+    wordGroup = soup.find('div',id='wordGroup')
+    ls2 = []
+    if wordGroup:
+        for s in wordGroup.descendants:
+            if isinstance(s,bs4.element.NavigableString):
+                if s.strip():
+                    ls2.append(s.strip())
+        text2 = ''
+        expl = expl + '\n\n'+'【词组】\n\n'
+        if(len(ls2) < 3):
+             text2 = text2 + ls2[0]+ ' '+ls2[1]+'\n'
+        else:
+            for i,x in enumerate(ls2[:-3]):
+                if i%2:
+                    text2 = text2 + x+'\n'
+                else:
+                    text2 = text2 + x+' '
+        text2 = re.sub('(\")','\'',text2) 
+        expl = expl + text2
+
+    # ----------------synoyms-----------------------
+    synoyms = soup.find('div',id='synonyms')
+    ls3 = []
+    if synoyms:
+        for s in synoyms.descendants:
+            if isinstance(s,bs4.element.NavigableString):
+                if s.strip():
+                    ls3.append(s.strip())
+        text3 = ''
+        tmp_flag = True
+        for i in ls3:
+            if '.' in i:
+                if tmp_flag:
+                    tmp_flag = False
+                    text3 = text3 +'\n' + i+'\n'
+                else:
+                    text3 = text3 +'\n\n' + i+'\n'
+            else:
+                text3 = text3 + i
+
+        text3 = re.sub('(\")','\'',text3)
+        expl = expl + '\n\n'+'【同近义词】\n'
+        expl = expl + text3
+
+
+    # --------------discriminate----------------------
+    discriminate = soup.find('div',id='discriminate')
+    ls4 = []
+    if discriminate:
+        for s in discriminate.descendants:
+            if isinstance(s,bs4.element.NavigableString):
+                if s.strip():
+                    ls4.append(s.strip())
+       
+        expl = expl + '\n\n'+'【词语辨析】\n\n'
+        text4 = '-'*40+'\n'+ls4[0]+'\n'+'-'*40+'\n\n'
+
+        for x in ls4[1:]:
+            if x in '以上来源于':
+                break
+            if re.match(r'^[a-zA-Z]+$',x):
+                text4 = text4 + x + ' >> '
+            else:
+                text4 = text4 + x + '\n\n' 
+            
+        text4 = re.sub('(\")','\'',text4)   
+        expl = expl + text4
+
+ 
+    if printer:
+        colorfulPrint(expl)
+    return expl
 
 
 
 
 def search_database(word):
-    conn = sqlite3.connect('/backup/Use/SearchWord/vocabulary.db')
+    conn = sqlite3.connect('word.db')
     curs = conn.cursor()
     curs.execute('SELECT expl, pr FROM Word WHERE name = "%s"'% (word))
     res = curs.fetchall()
@@ -90,12 +172,12 @@ def search_database(word):
     conn.close()
 
 def add_word(word):
-    conn = sqlite3.connect('/backup/Use/SearchWord/vocabulary.db')
+    conn = sqlite3.connect('/backup/Use/SearchWord/word.db')
     curs = conn.cursor()
     try:
         expl = search_online(word,printer=False)
-        curs.execute('create table if not exists Word(name text Primary Key, expl text,pr int default 1,aset char[1],addtime TIMESTAMP NOT NULL default (datetime("now", "localtime")))')
-        curs.execute('insert into Word(name, expl,pr,aset,addtime) VALUES ("%s","%s",%d,"%s",datetime("now","localtime"))'%(word,expl,1,word[0].upper()))
+        curs.execute('create table if not exists Word(name text Primary Key, expl text,pr int default 1,aset char[1],addtime TIMESTAMP NOT NULL DEFAULT (datetime(\'now\', \'localtime\')))')
+        curs.execute("insert into word(name,expl,pr,aset) values (\"%s\",\"%s\",%d,\"%s\")"%(word,expl,1,word[0].upper()))
     except Exception as e:
         print(colored('something\'s wrong, you can\'t add the word','white','on_red'))
         print(e)
@@ -108,7 +190,7 @@ def add_word(word):
 
 
 def delete_word(word):
-    conn = sqlite3.connect('/backup/Use/SearchWord/vocabulary.db')
+    conn = sqlite3.connect('word.db')
     curs = conn.cursor()
     try:
         curs.execute('DELETE FROM Word WHERE name = "%s"'% (word))
@@ -123,7 +205,7 @@ def delete_word(word):
         conn.close()
 
 def set_priority(word,pr):
-    conn = sqlite3.connect('/backup/Use/SearchWord/vocabulary.db')
+    conn = sqlite3.connect('word.db')
     curs = conn.cursor()
     try:
         curs.execute('UPDATE Word SET pr=%d WHERE name = "%s"'% (pr,word))
@@ -138,7 +220,7 @@ def set_priority(word,pr):
         conn.close()
 
 def list_catlog(aset,vb=False,output=False):
-    conn = sqlite3.connect('/backup/Use/SearchWord/vocabulary.db')
+    conn = sqlite3.connect('word.db')
     curs = conn.cursor()
     try:
         if not vb:
@@ -169,7 +251,7 @@ def list_catlog(aset,vb=False,output=False):
         conn.close()
 
 def list_priority(pr,vb=False,output=False):
-    conn = sqlite3.connect('/backup/Use/SearchWord/vocabulary.db')
+    conn = sqlite3.connect('word.db')
     curs = conn.cursor()
     try:
         if not vb:
@@ -196,7 +278,7 @@ def list_priority(pr,vb=False,output=False):
 
 
 def list_latest(limit,vb=False,output=False):
-    conn = sqlite3.connect('/backup/Use/SearchWord/vocabulary.db')
+    conn = sqlite3.connect('word.db')
     curs = conn.cursor()
     try:
         if not vb:
