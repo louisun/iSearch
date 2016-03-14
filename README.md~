@@ -6,11 +6,13 @@
 
 设置了优先级，方便单词的巩固和背诵。
 
-# 安装
+# 简单设置
 
-```
-python setup.py install
-```
+首先在`isearch.py`代码中设置你的数据库路径。
+
+然后alias一下，下面是将`python isearh.py`命名为`isearch`
+
+记得备份数据库文件，防止意外丢失。
 
 # 使用方法
 

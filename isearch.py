@@ -8,6 +8,9 @@ import sqlite3
 from termcolor import colored
 from getopt import getopt
 
+# Set your own path of database
+db_path = '/backup/Use/SearchWord/' 
+
 def colorfulPrint(raw):
     lines = raw.split('\n')
     highlight = True
@@ -68,7 +71,7 @@ def search_online(word,printer=True):
 
         expl = expl + (' '.join(ls1[:2])) + '\n'
 
-        line = ' '.join(ls1[4:])            
+        line = ' '.join(ls1[4:])
         text1 = re.sub('例：', '\n\n例：', line)
         text1 = re.sub(r'(\d+\. )', r'\n\n\1', text1)
         text1 = re.sub(r'(\s+?→\s+)',r'  →  ',text1)
@@ -96,7 +99,7 @@ def search_online(word,printer=True):
                     text2 = text2 + x+'\n'
                 else:
                     text2 = text2 + x+' '
-        text2 = re.sub('(\")','\'',text2) 
+        text2 = re.sub('(\")','\'',text2)
         expl = expl + text2
 
     # ----------------synoyms-----------------------
@@ -132,7 +135,7 @@ def search_online(word,printer=True):
             if isinstance(s,bs4.element.NavigableString):
                 if s.strip():
                     ls4.append(s.strip())
-       
+
         expl = expl + '\n\n'+'【词语辨析】\n\n'
         text4 = '-'*40+'\n'+ls4[0]+'\n'+'-'*40+'\n\n'
 
@@ -142,12 +145,12 @@ def search_online(word,printer=True):
             if re.match(r'^[a-zA-Z]+$',x):
                 text4 = text4 + x + ' >> '
             else:
-                text4 = text4 + x + '\n\n' 
-            
-        text4 = re.sub('(\")','\'',text4)   
+                text4 = text4 + x + '\n\n'
+
+        text4 = re.sub('(\")','\'',text4)
         expl = expl + text4
 
- 
+
     if printer:
         colorfulPrint(expl)
     return expl
@@ -156,7 +159,7 @@ def search_online(word,printer=True):
 
 
 def search_database(word):
-    conn = sqlite3.connect('word.db')
+    conn = sqlite3.connect(db_path+'word.db')
     curs = conn.cursor()
     curs.execute('SELECT expl, pr FROM Word WHERE name = "%s"'% (word))
     res = curs.fetchall()
@@ -172,11 +175,10 @@ def search_database(word):
     conn.close()
 
 def add_word(word):
-    conn = sqlite3.connect('/backup/Use/SearchWord/word.db')
+    conn = sqlite3.connect(db_path+'word.db')
     curs = conn.cursor()
     try:
         expl = search_online(word,printer=False)
-        curs.execute('create table if not exists Word(name text Primary Key, expl text,pr int default 1,aset char[1],addtime TIMESTAMP NOT NULL DEFAULT (datetime(\'now\', \'localtime\')))')
         curs.execute("insert into word(name,expl,pr,aset) values (\"%s\",\"%s\",%d,\"%s\")"%(word,expl,1,word[0].upper()))
     except Exception as e:
         print(colored('something\'s wrong, you can\'t add the word','white','on_red'))
@@ -190,7 +192,7 @@ def add_word(word):
 
 
 def delete_word(word):
-    conn = sqlite3.connect('word.db')
+    conn = sqlite3.connect(db_path+'word.db')
     curs = conn.cursor()
     try:
         curs.execute('DELETE FROM Word WHERE name = "%s"'% (word))
@@ -205,7 +207,7 @@ def delete_word(word):
         conn.close()
 
 def set_priority(word,pr):
-    conn = sqlite3.connect('word.db')
+    conn = sqlite3.connect(db_path+'word.db')
     curs = conn.cursor()
     try:
         curs.execute('UPDATE Word SET pr=%d WHERE name = "%s"'% (pr,word))
@@ -220,7 +222,7 @@ def set_priority(word,pr):
         conn.close()
 
 def list_catlog(aset,vb=False,output=False):
-    conn = sqlite3.connect('word.db')
+    conn = sqlite3.connect(db_path+'word.db')
     curs = conn.cursor()
     try:
         if not vb:
@@ -251,7 +253,7 @@ def list_catlog(aset,vb=False,output=False):
         conn.close()
 
 def list_priority(pr,vb=False,output=False):
-    conn = sqlite3.connect('word.db')
+    conn = sqlite3.connect(db_path+'word.db')
     curs = conn.cursor()
     try:
         if not vb:
@@ -278,7 +280,7 @@ def list_priority(pr,vb=False,output=False):
 
 
 def list_latest(limit,vb=False,output=False):
-    conn = sqlite3.connect('word.db')
+    conn = sqlite3.connect(db_path+'word.db')
     curs = conn.cursor()
     try:
         if not vb:
@@ -303,8 +305,7 @@ def list_latest(limit,vb=False,output=False):
         curs.close()
         conn.close()
 
-
-if __name__ == '__main__':
+def main():
     options, args = getopt(sys.argv[1:],'l:p:s:c:d:a:hvo', ['latest=','priority=','set=','catalog=','delete=','add=','help','verbose','output'])
     if options:
         is_verbose = False
@@ -361,5 +362,14 @@ if __name__ == '__main__':
                 break
 
     elif args:
+        if not os.path.exists(db_path+'word.db'):
+            conn = sqlite3.connect(db_path+'word.db')
+            curs = conn.cursor()
+            curs.execute('create table if not exists Word(name text Primary Key, expl text,pr int default 1,aset char[1],addtime TIMESTAMP NOT NULL DEFAULT (datetime(\'now\', \'localtime\')))')
+            conn.commit()
+            curs.close()
+            conn.close()
         word = ' '.join(args)
         search_database(word)
+if __name__ == '__main__':
+    main()
