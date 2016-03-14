@@ -10,7 +10,7 @@
 
 首先在`isearch.py`代码中设置你的数据库路径。
 
-然后alias一下，下面是将`python isearh.py`命名为`isearch`
+然后alias一下，下面是将`python isearch.py`命名为`isearch`
 
 记得备份数据库文件，防止意外丢失。
 
