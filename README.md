@@ -35,7 +35,7 @@
 >
 >-o      -output     输出模式
 
-
+![示例](./example/example.png)
 
 直接查询
 ```
