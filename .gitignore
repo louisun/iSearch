@@ -1,1 +1,8 @@
 *~
+
+*.txt
+
+__pychache__/
+
+
+word.db
