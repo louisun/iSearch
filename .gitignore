@@ -2,7 +2,7 @@
 
 *.txt
 
-__pychache__/
+__pycache__/
 
 
 word.db

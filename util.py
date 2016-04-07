@@ -8,7 +8,7 @@ from termcolor import colored
 
 
 # Default database path is ~/.iSearch.
-default_path = os.path.join(os.path.expanduser('~'),'Fuck') 
+default_path = os.path.join(os.path.expanduser('~'),'.iSearch') 
 
 # Set your user path if you want
 USER_PATH = ''
@@ -54,15 +54,22 @@ def getText(url):
                 if s.strip():
                     ls1.append(s.strip())
 
-        expl = expl + (' '.join(ls1[:2])) + '\n'
-
-        line = ' '.join(ls1[4:])
+        if ls1[1].startswith('('):
+            # Phrase
+            expl = expl + ls1[0] + '\n'
+            line = ' '.join(ls1[2:])
+        else:
+            expl = expl + (' '.join(ls1[:2])) + '\n'
+            line = ' '.join(ls1[3:])
         text1 = re.sub('例：', '\n\n例：', line)
         text1 = re.sub(r'(\d+\. )', r'\n\n\1', text1)
         text1 = re.sub(r'(\s+?→\s+)',r'  →  ',text1)
         text1 = re.sub('(\")','\'',text1)
         text1 = re.sub('\s{10}\s+','',text1)
         expl = expl + text1
+
+
+
 
 
 
@@ -125,7 +132,7 @@ def getText(url):
                     ls4.append(s.strip())
 
         expl = expl + '\n\n'+'【词语辨析】\n\n'
-        text4 = '-'*40+'\n'+ls4[0]+'\n'+'-'*40+'\n\n'
+        text4 = '-'*40+'\n'+format('↓ '+ls4[0]+' 的辨析 ↓','^40s')+'\n'+'-'*40+'\n\n'
 
         for x in ls4[1:]:
             if x in '以上来源于':
@@ -137,6 +144,39 @@ def getText(url):
 
         text4 = re.sub('(\")','\'',text4)
         expl = expl + text4
+
+
+    
+    # ------------------else------------------
+
+    # If no text found, then get other information
+
+    examples = soup.find('div',id='bilingual')
+
+    ls5=[]
+
+    for s in examples.descendants:
+            if isinstance(s, bs4.element.NavigableString):
+                if s.strip():
+                    ls5.append(s.strip())
+                    
+    expl = expl +'\n\n【双语例句】\n\n'    
+    pt=re.compile(r'.*?\..*?\..*?|《.*》')
+
+    count = 0
+    for word in ls5:
+        if not pt.match(word):
+            if word.endswith(('（','。','？','！','。”','）')):
+                        expl = expl + word + '\n\n'
+                        continue
+
+            if word[0] >= u'\u4e00' and word[0]<=u'\u9fa5':
+                if word != '更多双语例句':
+                        expl = expl + word
+                        count+=1
+            else:
+                expl = expl + ' ' + word
+
     return expl
 
 

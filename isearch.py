@@ -49,10 +49,13 @@ def main():
 	args = parser.parse_args()
 	is_verbose = args.verbose
 	is_output = args.output
+	
 	if args.add:
 		add_word(' '.join(args.add))
+
 	elif args.delete:
 		delete_word(' '.join(args.delete))
+
 	elif args.set:
 		priority = int(args.set)
 		if args.word:
@@ -62,11 +65,14 @@ def main():
 
 	elif args.letter:
 		list_letter(args.letter[0].upper(),vb=is_verbose,output=is_output)
+
 	elif args.time:
 		limit = int(args.time)
 		list_latest(limit,vb=is_verbose,output=is_output)
+
 	elif args.priority:
 			list_priority(args.priority,vb=is_verbose,output=is_output)
+
 	elif args.file:
 		input_file_path = args.file
 		if input_file_path.endswith('.txt'):
@@ -75,6 +81,7 @@ def main():
 			superInsert(os.path.join(default_path,'word_list.txt'))
 		else:
 			print(colored('please use a correct path of text file','white','on_red'))
+
 	elif args.word:
 		if not os.path.exists(os.path.join(default_path,'word.db')):
 			os.mkdir(default_path)
