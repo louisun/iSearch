@@ -4,5 +4,7 @@
 
 __pycache__/
 
+# Pycharm
+.idea/
 
 word.db
