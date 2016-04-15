@@ -6,7 +6,7 @@ from util import *
 
 # If you want to use another path, set USER_PATH in util.py.
 if USER_PATH:
-    default_path = USER_PATH
+    DEFAULT_PATH = USER_PATH
 
 
 def main():
@@ -80,18 +80,18 @@ def main():
         if input_file_path.endswith('.txt'):
             super_insert(input_file_path)
         elif input_file_path == 'default':
-            super_insert(os.path.join(default_path, 'word_list.txt'))
+            super_insert(os.path.join(DEFAULT_PATH, 'word_list.txt'))
         else:
             print(colored('please use a correct path of text file', 'white', 'on_red'))
     elif args.count:
         count_word(args.count)
 
     elif args.word:
-        if not os.path.exists(os.path.join(default_path, 'word.db')):
-            os.mkdir(default_path)
-            with open(os.path.join(default_path,'word_list.txt'), 'w') as f:
+        if not os.path.exists(os.path.join(DEFAULT_PATH, 'word.db')):
+            os.mkdir(DEFAULT_PATH)
+            with open(os.path.join(DEFAULT_PATH,'word_list.txt'), 'w') as f:
                 pass
-            conn = sqlite3.connect(os.path.join(default_path, 'word.db'))
+            conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
             curs = conn.cursor()
             curs.execute(CREATE_TABLE_WORD)
             conn.commit()
