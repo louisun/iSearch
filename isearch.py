@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
+import sys
 import argparse
 from util import *
 
@@ -40,6 +41,9 @@ def main():
     parser.add_argument('-l', '--letter', dest='letter',
                         action='store', help='list words by letter.')
 
+    parser.add_argument('-c', '--count', dest='count',
+                        action='store', help='count the word.')
+
     args = parser.parse_args()
     is_verbose = args.verbose
     is_output = args.output
@@ -51,7 +55,11 @@ def main():
         delete_word(' '.join(args.delete))
 
     elif args.set:
-        priority = int(args.set)
+        number = args.set
+        if not number.isnumeric():
+            print(colored('you forget to set the number','white','on_red'))
+            sys.exit()
+        priority = int(number)
         if args.word:
             set_priority(' '.join(args.word), priority)
         else:
@@ -75,6 +83,8 @@ def main():
             super_insert(os.path.join(default_path, 'word_list.txt'))
         else:
             print(colored('please use a correct path of text file', 'white', 'on_red'))
+    elif args.count:
+        count_word(args.count)
 
     elif args.word:
         if not os.path.exists(os.path.join(default_path, 'word.db')):

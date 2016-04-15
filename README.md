@@ -17,6 +17,8 @@
 - 从文本文件中批量添加单词到数据库
 - 颜色高亮（也可关闭，方便导出到文本文件）
 - 可以是词组和中文
+- 从数据库查询时，可以只输入单词的首部。
+- 查看每个字母、优先级的单词数目。
 
 **注：**
 
@@ -164,38 +166,53 @@ the priority of sun has been reset to 3
 //-o --output 模式, 非多色输出, 可以重定向到文件
 
 //列出优先级为1的单词
-isearch -p 1 
+isearch -p 1
 
 //列出优先级大于2的单词
-isearch -p 2+ 
+isearch -p 2+
 
 //列出优先级为2-3的单词
-isearch -p 2-3 
+isearch -p 2-3
 ```
 
 ## 列出最近添加的N个单词
 
 ```
 //非verbose模式, 只输出优先级和单词
-//-v --verbose 模式, 输出详细意思 
+//-v --verbose 模式, 输出详细意思
 
 //非output模式, 命令行多色
 //-o --output 模式, 非多色输出, 可以重定向到文件
 
-isearch -t 10 
+isearch -t 10
 ```
 
 ## 列出以A-Z开头的所有单词
 
 ```
 //非verbose模式, 只输出优先级和单词
-//-v --verbose 模式, 输出详细意思 
+//-v --verbose 模式, 输出详细意思
 
 //非output模式, 命令行多色
 //-o --output 模式, 非多色输出, 可以重定向到文件
 
-isearch -l a 
+isearch -l a
 ```
 
+## 计数
 
+```
+// 列出以 a 字母开头的单词数目
+isearch -c a
 
+// 列出优先级为 3 的单词数目
+isearch -c 3
+
+// 列出优先级大于 3 的单词数目
+isearch -c 3+
+
+// 列出优先级为 2-3 的单词数目
+isearch -c 2-3
+
+// 列出全部单词数目
+isearch -c all
