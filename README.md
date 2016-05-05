@@ -22,29 +22,25 @@
 
 **注：**
 
-普通的查询，先会在本地数据库查找，若没有找到才从网上查找。
+普通查询，会先在本地数据库查找，若数据库中没有才从网页查找。
 
 
 ---
 
-# 环境
+# 安装与设置
 
-第三方库：
-`requests`、`bs4`、`termcolor`
+	pip install iSearch
 
-# 设置
 
-初次使用， 请先试查一个单词，以创建配置目录和数据库。
+命令是`s`。
 
-默认配置文件和数据库在`~/.iSearch`目录下。
+初次使用，请先查一个单词，比如`s hello`，以创建配置目录和数据库。
 
-可以在`utils.py`中设置自己存放数据库和配置文件的目录。
-
-为了方便使用，最好`alias`一下，比如将`python /目录/isearch.py`命名为更为简短的命令。
-
-最好备份数据库文件，以防意外丢失。
+日志文件和数据库文件默认在`~/.iSearch`目录下。
 
 # 使用方法
+
+	usage: s [-h] [-f FILE] [-a ADD [ADD ...]] [-d DELETE [DELETE ...]] [-s SET] [-v] [-o] [-p PRIORITY] [-t TIME] [-l LETTER] [-c COUNT] [word [word ...]]
 
 
 参数说明：
@@ -76,7 +72,7 @@
 
 ## 直接查询
 ```
-isearch sun
+s sun
 
 sun 不在数据库中，从有道词典查询
 sun /sʌn/
@@ -121,18 +117,18 @@ bask
 ```
 ## 从文本文件添加单词到数据库
 ```
-isearch -f [文件绝对路径]
+s -f [文件绝对路径]
 
 
 下面输入default默认为配置目录下的word_list.txt文件
 
-isearch -f default 
+s -f default 
 
 ```
 
 ## 逐个添加单词到数据库 （默认优先级为 1）
 ```
-isearch -a sun
+s -a sun
 
 sun has been inserted into database
 
@@ -141,7 +137,7 @@ sun has been inserted into database
 ## 从数据库中删除
 
 ```
-isearch -d [单词]
+s -d [单词]
 
 sun has been deleted from database
 ```
@@ -149,7 +145,7 @@ sun has been deleted from database
 ## 设置优先级 （1 到 5）
 
 ```
-isearch -s 3 sun
+s -s 3 sun
 
 the priority of sun has been reset to 3
 
@@ -166,13 +162,13 @@ the priority of sun has been reset to 3
 //-o --output 模式, 非多色输出, 可以重定向到文件
 
 //列出优先级为1的单词
-isearch -p 1
+s -p 1
 
 //列出优先级大于2的单词
-isearch -p 2+
+s -p 2+
 
 //列出优先级为2-3的单词
-isearch -p 2-3
+s -p 2-3
 ```
 
 ## 列出最近添加的N个单词
@@ -184,7 +180,7 @@ isearch -p 2-3
 //非output模式, 命令行多色
 //-o --output 模式, 非多色输出, 可以重定向到文件
 
-isearch -t 10
+s -t 10
 ```
 
 ## 列出以A-Z开头的所有单词
@@ -196,23 +192,28 @@ isearch -t 10
 //非output模式, 命令行多色
 //-o --output 模式, 非多色输出, 可以重定向到文件
 
-isearch -l a
+s -l a
 ```
 
 ## 计数
 
 ```
 // 列出以 a 字母开头的单词数目
-isearch -c a
+s -c a
 
 // 列出优先级为 3 的单词数目
-isearch -c 3
+s -c 3
 
 // 列出优先级大于 3 的单词数目
-isearch -c 3+
+s -c 3+
 
 // 列出优先级为 2-3 的单词数目
-isearch -c 2-3
+s -c 2-3
 
 // 列出全部单词数目
-isearch -c all
+s -c all
+```
+
+## LICENSE
+
+MIT

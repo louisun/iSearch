@@ -2,11 +2,7 @@
 from __future__ import print_function
 import sys
 import argparse
-from util import *
-
-# If you want to use another path, set USER_PATH in util.py.
-if USER_PATH:
-    DEFAULT_PATH = USER_PATH
+from .util import *
 
 
 def main():
@@ -49,7 +45,8 @@ def main():
     is_output = args.output
 
     if args.add:
-        add_word(' '.join(args.add))
+        default_pr = 1 if not args.set else int(args.set)
+        add_word(' '.join(args.add), default_pr)
 
     elif args.delete:
         delete_word(' '.join(args.delete))

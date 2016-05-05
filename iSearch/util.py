@@ -9,9 +9,6 @@ from termcolor import colored
 # Default database path is ~/.iSearch.
 DEFAULT_PATH = os.path.join(os.path.expanduser('~'), '.iSearch')
 
-# Set your user path if you want
-USER_PATH = ''
-
 CREATE_TABLE_WORD = '''
 CREATE TABLE IF NOT EXISTS Word
 (
@@ -240,7 +237,7 @@ def search_database(word):
     conn.close()
 
 
-def add_word(word):
+def add_word(word, default_pr):
 
     # add the word or phrase to database.
 
@@ -254,7 +251,7 @@ def add_word(word):
 
     try:
         expl = search_online(word, printer=False)
-        curs.execute('insert into word(name, expl, pr, aset) values ("%s", "%s", %d, "%s")' % (word, expl, 1, word[0].upper()))
+        curs.execute('insert into word(name, expl, pr, aset) values ("%s", "%s", %d, "%s")' % (word, expl, default_pr, word[0].upper()))
     except Exception as e:
         print(colored('something\'s wrong, you can\'t add the word', 'white', 'on_red'))
         print(e)
