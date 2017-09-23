@@ -43,6 +43,13 @@ Update: 2017/3/18
 
 命令是`s`。
 
+```
+注意： 直接使用 s 无效。可通过设定alias来使用 s 命令。
+例如：　在 .zshrc　中设定
+s='python /home/ubuntu/.local/lib/python2.7/site-packages/iSearch/isearch.py s'
+```
+
+
 初次使用，请先查一个单词，比如`s hello`，以创建配置目录和数据库。
 
 日志文件和数据库文件默认在`~/.iSearch`目录下。
