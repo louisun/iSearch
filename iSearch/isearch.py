@@ -9,6 +9,7 @@ import requests
 import bs4
 from termcolor import colored
 
+# Python2 compatibility
 if sys.version.startswith('2'):
     reload(sys)
     sys.setdefaultencoding('utf-8')
@@ -233,7 +234,11 @@ def search_database(word):
     else:
         print(colored(word + ' 不在数据库中，从有道词典查询', 'white', 'on_red'))
         search_online(word)
-        add_in_db = input('是否加入到数据库中(Y/N)：').strip()
+        try:
+            add_in_db = input('输入数字以设置存入数据库中的优先级, 不输入则不保存：').strip()
+        except NameError:
+            # python2 兼容
+            add_in_db = None
         if add_in_db == 'Y' or add_in_db == 'y':
             add_word(word, 1)
             print(colored('单词 {} 已加入数据库中'.format(word), 'white', 'on_red'))
