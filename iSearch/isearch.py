@@ -235,7 +235,7 @@ def search_database(word):
         print(colored(word + ' 不在数据库中，从有道词典查询', 'white', 'on_red'))
         search_online(word)
         try:
-            add_in_db_pr = input('输入数字以设置存入数据库中的优先级, 不输入则不保存：')
+            add_in_db_pr = input('如要将该单词存入数据库，请输入优先级，不输入则存入\n>>>')
         except:
             # python2 兼容
             add_in_db_pr = None
