@@ -233,6 +233,7 @@ def search_database(word):
     else:
         print(colored(word + ' 不在数据库中，从有道词典查询', 'white', 'on_red'))
         search_online(word)
+        add_word(word, 1)
     curs.close()
     conn.close()
 
