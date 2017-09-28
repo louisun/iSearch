@@ -235,12 +235,12 @@ def search_database(word):
         print(colored(word + ' 不在数据库中，从有道词典查询', 'white', 'on_red'))
         search_online(word)
         try:
-            add_in_db = input('输入数字以设置存入数据库中的优先级, 不输入则不保存：').strip()
+            add_in_db_pr = input('输入数字以设置存入数据库中的优先级, 不输入则不保存：')
         except NameError:
             # python2 兼容
-            add_in_db = None
-        if add_in_db == 'Y' or add_in_db == 'y':
-            add_word(word, 1)
+            add_in_db_pr = None
+        if add_in_db_pr:
+            add_word(word, add_in_db_pr)
             print(colored('单词 {} 已加入数据库中'.format(word), 'white', 'on_red'))
         else:
             print(colored('不加入数据库，跳过', 'white', 'on_red'))
