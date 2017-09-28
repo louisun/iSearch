@@ -239,7 +239,7 @@ def search_database(word):
         except:
             # python2 兼容
             add_in_db_pr = None
-        if add_in_db_pr and add_in_db_pr.isalnum():
+        if add_in_db_pr and add_in_db_pr.isdigit():
             add_word(word, add_in_db_pr)
             print(colored('单词 {} 已加入数据库中'.format(word), 'white', 'on_red'))
         else:
