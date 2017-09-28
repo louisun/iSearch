@@ -234,14 +234,15 @@ def search_database(word):
     else:
         print(colored(word + ' 不在数据库中，从有道词典查询', 'white', 'on_red'))
         search_online(word)
-        try:
-            add_in_db_pr = str(input('如要将该单词存入数据库，请输入优先级，不输入则不存入\n>>> '))
-        except:
-            # python2 兼容
-            add_in_db_pr = None
+        input_msg = '如要将该单词存入数据库，请输入优先级，不输入则不存入\n>>> '
+        if sys.version_info[0] == 2:
+            add_in_db_pr = raw_input(input_msg)
+        else:
+            add_in_db_pr = input(input_msg)
+
         if add_in_db_pr and add_in_db_pr.isdigit():
             add_word(word, add_in_db_pr)
-            print(colored('单词 {} 已加入数据库中'.format(word), 'white', 'on_red'))
+            print(colored('单词 {word} 已加入数据库中'.format(word=word), 'white', 'on_red'))
         else:
             print(colored('不加入数据库，跳过', 'white', 'on_red'))
     curs.close()
