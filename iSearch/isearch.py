@@ -241,7 +241,7 @@ def search_database(word):
             add_in_db_pr = input(input_msg)
 
         if add_in_db_pr and add_in_db_pr.isdigit():
-            add_word(word, add_in_db_pr)
+            add_word(word, int(add_in_db_pr))
             print(colored('单词 {word} 已加入数据库中'.format(word=word), 'white', 'on_red'))
         else:
             print(colored('不加入数据库，跳过', 'white', 'on_red'))
