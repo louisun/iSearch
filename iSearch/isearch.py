@@ -10,7 +10,7 @@ import bs4
 from termcolor import colored
 
 # Python2 compatibility
-if sys.version.startswith('2'):
+if sys.version_info[0] == 2:
     reload(sys)
     sys.setdefaultencoding('utf-8')
 
@@ -232,19 +232,18 @@ def search_database(word):
         print(colored('★ ' * res[0][1], 'red'), colored('☆ ' * (5 - res[0][1]), 'yellow'), sep='')
         colorful_print(res[0][0])
     else:
-        print(colored(word + ' 不在数据库中，从有道词典查询', 'white', 'on_red'))
+        print(colored(word + ' 不在本地，从有道词典查询', 'white', 'on_red'))
         search_online(word)
-        input_msg = '如要将该单词存入数据库，请输入优先级，不输入则不存入\n>>> '
+        input_msg = '若存入本地，请输入优先级(1~5) ，否则 Enter 跳过\n>>> '
         if sys.version_info[0] == 2:
             add_in_db_pr = raw_input(input_msg)
         else:
             add_in_db_pr = input(input_msg)
 
         if add_in_db_pr and add_in_db_pr.isdigit():
-            add_word(word, int(add_in_db_pr))
-            print(colored('单词 {word} 已加入数据库中'.format(word=word), 'white', 'on_red'))
-        else:
-            print(colored('不加入数据库，跳过', 'white', 'on_red'))
+            if(int(add_in_db_pr) >= 1 and int(add_in_db_pr) <= 5):
+                add_word(word, int(add_in_db_pr))
+                print(colored('单词 {word} 已加入数据库中'.format(word=word), 'white', 'on_red'))
     curs.close()
     conn.close()
 
