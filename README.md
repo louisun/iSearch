@@ -51,13 +51,15 @@ Update: Version 1.0.2
 
 如果你嫌当前版本每次提示有些烦，毕竟不是每个单词都想记下来，可以重新安装 1.0.0 版本，用下面的命令
 
+```bash
 pip install iSearch==1.0.0
+```
 
 可选择将下面的函数放在`.bashrc` 或`.zshrc`中，这样查询后可以用`less`命令方便翻滚查看（不适用于最新版本，适用于1.0.0版）
 
 ```bash
 function s(){
-    local spath="/home/roadsheep/.pyenv/shims/s"
+    local spath="你的 s 命令路径" # 可用 which s 查看
     if [[ ${1:0:1} != '-' ]]
     then
         $spath $* | less 
