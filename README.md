@@ -31,11 +31,23 @@
 
 	pip install iSearch
 
+**必看：**
+
+默认命令是`s`，若被其他程序使用，可将`iSearch`目录下相应文件`alias`为其他名字。
+
+如果找不到`s` 命令，通常是由于`PATH`变量问题。
+
+Linux 下默认 pip 可能将包安装到`~/.local/lib/python3.6` 下，`s` 可执行文件会放在`~/.local/bin` 下。
+
+如果没将`~/.local/bin` 放入`PATH`，会导致找不到命令。
+
+ 请在你的`~/.bashrc`或`~/.zhsrc`中加入这行：
+
+```bash
+export PATH="$PATH:$HOME/.local/bin"
+```
+
 ==============================
-
-默认命令是`s`。
-部分用户的`s`命令被其他程序使用，可将`iSearch`目录下相应文件`alias`为其他名字。
-
 
 初次使用，请先查一个单词，比如`s hello`，以创建目录和数据库。
 
