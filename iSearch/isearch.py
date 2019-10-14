@@ -170,6 +170,32 @@ def get_text(url):
         text5 = re.sub('(\")', '\'', text5)
         expl += text5
 
+    # ------------------translation------------------
+
+    # If no '双语例句' found, then get translation
+
+    translation = soup.find('div', id='fanyiToggle')
+
+    ls6 = []
+
+    if translation:
+        for s in translation.descendants:
+            if isinstance(s, bs4.element.NavigableString):
+                if s.strip():
+                    ls6.append(s.strip())
+
+        text6 = '\n\n【有道翻译】\n\n'
+
+        for word in ls6:
+            if not word.startswith('以上为机器翻译结果'):
+                text6 = text6 + word + '\n\n'
+                continue
+            break
+
+        text6 = re.sub('(\")', '\'', text6)
+        expl += text6
+
+
     return expl
 
 
