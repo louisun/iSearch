@@ -27,6 +27,98 @@ aset     CHAR[1],
 addtime  TIMESTAMP NOT NULL DEFAULT (DATETIME('NOW', 'LOCALTIME'))
 )
 '''
+def get_info(soup, titleName, label, labelID, func):
+    result = soup.find(label, id = labelID)
+    wlist = []
+    text = ''
+    if result:
+        for s in result.descendants:
+            if isinstance(s, bs4.element.NavigableString):
+                if s.strip():
+                    wlist.append(s.strip())
+
+        text = '\n\n' + titleName + '\n\n'
+        text = func(wlist,text)
+        text = re.sub('(\")', '\'', text)
+    return text
+
+def deal_word_group(wlist, text):
+    if len(wlist) < 3:
+        text = text + wlist[0] + ' ' + wlist[1] + '\n'
+    else:
+        for i, x in enumerate(wlist[:-3]):
+            if i % 2:
+                text = text + x + '\n'
+            else:
+                text = text + x + ' '
+    return text
+
+def deal_synonyms(wlist, text):
+    tmp_flag = True
+    for i in wlist:
+        if '.' in i:
+            if tmp_flag:
+                tmp_flag = False
+                text = text + '\n' + i + '\n'
+            else:
+                text = text + '\n\n' + i + '\n'
+        else:
+            text = text + i
+    return text
+
+def deal_discriminate(wlist, text):
+    text += '-' * 40 + '\n' + format('↓ ' + wlist[0] + ' 的辨析 ↓', '^40s') + '\n' + '-' * 40 + '\n\n'
+
+    for x in wlist[1:]:
+        if x in '以上来源于':
+            break
+        if re.match(r'^[a-zA-Z]+$', x):
+            text = text + x + ' >> '
+        else:
+            text = text + x + '\n\n'
+
+    return text
+
+def deal_collins(wlist, text):
+    if wlist[1].startswith('('):
+        # Phrase
+        text = text + wlist[0] + '\n'
+        line = ' '.join(wlist[2:])
+    else:
+        text = text + (' '.join(wlist[:2])) + '\n'
+        line = ' '.join(wlist[3:])
+
+    text += re.sub('例：', '\n例：', line)
+    text = re.sub(r'(\d+\. )', r'\n\n\1', text)
+    text = re.sub(r'(\s+?→\s+)', r'  →  ', text)
+    text = re.sub('\s{10}\s+', '', text)
+    return text
+
+def deal_bilingual(ls5, text5):
+    pt = re.compile(r'.*?\..*?\..*?|《.*》')
+
+    for word in ls5:
+        if not pt.match(word):
+            if word.endswith(('（', '。', '？', '！', '。”', '）')):
+                text5 = text5 + word + '\n\n'
+                continue
+
+            if u'\u4e00' <= word[0] <= u'\u9fa5':
+                if word != '更多双语例句':
+                    text5 += word
+            else:
+                text5 = text5 + ' ' + word
+    return text5
+
+def deal_fanyiToggle(ls6, text6):
+    for word in ls6:
+        if not word.startswith('以上为机器翻译结果'):
+            text6 = text6 + word + '\n\n'
+            continue
+        break
+
+    return text6
+
 
 
 def get_text(url):
@@ -43,159 +135,12 @@ def get_text(url):
     data = res.text
     soup = bs4.BeautifulSoup(data, 'html.parser')
     expl = ''
-
-    # -----------------collins-----------------------
-
-    collins = soup.find('div', id="collinsResult")
-    ls1 = []
-    if collins:
-        for s in collins.descendants:
-            if isinstance(s, bs4.element.NavigableString):
-                if s.strip():
-                    ls1.append(s.strip())
-
-        if ls1[1].startswith('('):
-            # Phrase
-            expl = expl + ls1[0] + '\n'
-            line = ' '.join(ls1[2:])
-        else:
-            expl = expl + (' '.join(ls1[:2])) + '\n'
-            line = ' '.join(ls1[3:])
-        text1 = re.sub('例：', '\n\n例：', line)
-        text1 = re.sub(r'(\d+\. )', r'\n\n\1', text1)
-        text1 = re.sub(r'(\s+?→\s+)', r'  →  ', text1)
-        text1 = re.sub('(\")', '\'', text1)
-        text1 = re.sub('\s{10}\s+', '', text1)
-        expl += text1
-
-    # -----------------word_group--------------------
-
-    word_group = soup.find('div', id='word_group')
-    ls2 = []
-    if word_group:
-        for s in word_group.descendants:
-            if isinstance(s, bs4.element.NavigableString):
-                if s.strip():
-                    ls2.append(s.strip())
-        text2 = ''
-        expl = expl + '\n\n' + '【词组】\n\n'
-        if len(ls2) < 3:
-            text2 = text2 + ls2[0] + ' ' + ls2[1] + '\n'
-        else:
-            for i, x in enumerate(ls2[:-3]):
-                if i % 2:
-                    text2 = text2 + x + '\n'
-                else:
-                    text2 = text2 + x + ' '
-        text2 = re.sub('(\")', '\'', text2)
-        expl += text2
-
-    # ------------------synonyms---------------------
-
-    synonyms = soup.find('div', id='synonyms')
-    ls3 = []
-    if synonyms:
-        for s in synonyms.descendants:
-            if isinstance(s, bs4.element.NavigableString):
-                if s.strip():
-                    ls3.append(s.strip())
-        text3 = ''
-        tmp_flag = True
-        for i in ls3:
-            if '.' in i:
-                if tmp_flag:
-                    tmp_flag = False
-                    text3 = text3 + '\n' + i + '\n'
-                else:
-                    text3 = text3 + '\n\n' + i + '\n'
-            else:
-                text3 = text3 + i
-
-        text3 = re.sub('(\")', '\'', text3)
-        expl = expl + '\n\n' + '【同近义词】\n'
-        expl += text3
-
-    # ------------------discriminate------------------
-
-    discriminate = soup.find('div', id='discriminate')
-    ls4 = []
-    if discriminate:
-        for s in discriminate.descendants:
-            if isinstance(s, bs4.element.NavigableString):
-                if s.strip():
-                    ls4.append(s.strip())
-
-        expl = expl + '\n\n' + '【词语辨析】\n\n'
-        text4 = '-' * 40 + '\n' + format('↓ ' + ls4[0] + ' 的辨析 ↓', '^40s') + '\n' + '-' * 40 + '\n\n'
-
-        for x in ls4[1:]:
-            if x in '以上来源于':
-                break
-            if re.match(r'^[a-zA-Z]+$', x):
-                text4 = text4 + x + ' >> '
-            else:
-                text4 = text4 + x + '\n\n'
-
-        text4 = re.sub('(\")', '\'', text4)
-        expl += text4
-
-    # ------------------else------------------
-
-    # If no text found, then get other information
-
-    examples = soup.find('div', id='bilingual')
-
-    ls5 = []
-
-    if examples:
-        for s in examples.descendants:
-            if isinstance(s, bs4.element.NavigableString):
-                if s.strip():
-                    ls5.append(s.strip())
-
-        text5 = '\n\n【双语例句】\n\n'
-        pt = re.compile(r'.*?\..*?\..*?|《.*》')
-
-        for word in ls5:
-            if not pt.match(word):
-                if word.endswith(('（', '。', '？', '！', '。”', '）')):
-                    text5 = text5 + word + '\n\n'
-                    continue
-
-                if u'\u4e00' <= word[0] <= u'\u9fa5':
-                    if word != '更多双语例句':
-                        text5 += word
-                else:
-                    text5 = text5 + ' ' + word
-        text5 = re.sub('(\")', '\'', text5)
-        expl += text5
-
-    # ------------------translation------------------
-
-    # If no '双语例句' found, then get translation
-
-    translation = soup.find('div', id='fanyiToggle')
-
-    ls6 = []
-
-    if translation:
-        for s in translation.descendants:
-            if isinstance(s, bs4.element.NavigableString):
-                if s.strip():
-                    ls6.append(s.strip())
-
-        text6 = '\n\n【有道翻译】\n\n'
-
-        for word in ls6:
-            if not word.startswith('以上为机器翻译结果'):
-                text6 = text6 + word + '\n\n'
-                continue
-            break
-
-        text6 = re.sub('(\")', '\'', text6)
-        expl += text6
-
-
+    expl += get_info(soup, '【词组】', 'div', 'word_group', deal_word_group)
+    expl += get_info(soup, '【同近义词】', 'div', 'synonyms', deal_synonyms)
+    expl += get_info(soup, '【词语辨析】', 'div', 'discriminate', deal_discriminate)
+    expl += get_info(soup, '【用例介绍】', 'div', 'collinsResult', deal_collins)
+    expl += get_info(soup, '【双语例句】', 'div', 'bilingual', deal_bilingual)
+    expl += get_info(soup, '【有道翻译】', 'div', 'fanyiToggle', deal_fanyiToggle)
     return expl
 
 
@@ -207,16 +152,16 @@ def colorful_print(raw):
     detail = False
     for line in lines:
         if line:
-            if colorful:
-                colorful = False
-                print(colored(line, 'white', 'on_green') + '\n')
-                continue
-            elif line.startswith('例'):
+            if line.startswith('例'):
                 print(line + '\n')
                 continue
             elif line.startswith('【'):
-                print(colored(line, 'white', 'on_green') + '\n')
+                print(colored(line, 'white', 'on_blue') + '\n')
                 detail = True
+                continue
+            elif colorful:
+                aolorful = False
+                print(colored(line, 'green', None) + '\n')
                 continue
 
             if not detail:
@@ -258,7 +203,7 @@ def search_database(word):
         print(colored('★ ' * res[0][1], 'red'), colored('☆ ' * (5 - res[0][1]), 'yellow'), sep='')
         colorful_print(res[0][0])
     else:
-        print(colored(word + ' 不在本地，从有道词典查询', 'white', 'on_red'))
+        print(colored(word + '提示: 不在本地，从有道词典查询', 'green', 'on_grey'))
         search_online(word)
         input_msg = '若存入本地，请输入优先级(1~5) ，否则 Enter 跳过\n>>> '
         if sys.version_info[0] == 2:
@@ -269,7 +214,7 @@ def search_database(word):
         if add_in_db_pr and add_in_db_pr.isdigit():
             if(int(add_in_db_pr) >= 1 and int(add_in_db_pr) <= 5):
                 add_word(word, int(add_in_db_pr))
-                print(colored('单词 {word} 已加入数据库中'.format(word=word), 'white', 'on_red'))
+                print(colored('单词 {word} 已加入数据库中'.format(word=word), 'red', 'on_cyan'))
     curs.close()
     conn.close()
 
@@ -282,8 +227,11 @@ def add_word(word, default_pr):
     curs.execute('SELECT expl, pr FROM Word WHERE name = "%s"' % word)
     res = curs.fetchall()
     if res:
+        #update : 这里可以提示是否更新，如果有某个字段不一致或者上次查询时间比较旧
         print(colored(word + ' 在数据库中已存在，不需要添加', 'white', 'on_red'))
         sys.exit()
+
+   #update: 这里可以添加模糊查询,通过某个参数指定，先显示近似查询，然后选择某一个后，再具体查询
 
     try:
         expl = search_online(word, printer=False)
@@ -551,6 +499,10 @@ def main():
     args = parser.parse_args()
     is_verbose = args.verbose
     is_output = args.output
+
+    #设置参数，可以每次打开，可以根据查询次数，对单词进行权重排序，提示复习
+    #或者手动输入命令更新优先级
+    #应该能支持不同显示版本
 
     if args.add:
         default_pr = 1 if not args.set else int(args.set)
