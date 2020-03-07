@@ -307,16 +307,18 @@ def set_priority(word, pr):
         print(colored('%s not exists in the database' % word, 'white', 'on_red'))
 
 
-def list_letter(aset, vb=False, output=False):
+def list_letter(aset, card=False, vb=False, output=False):
     '''list words by letter, from a-z (ingore case).'''
 
     conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
     curs = conn.cursor()
     try:
-        if not vb:
-            curs.execute('SELECT name, pr FROM Word WHERE aset = "%s"' % aset)
+        if vb:
+            curs.execute('SELECT name, pr, basic, expl  FROM Word WHERE aset = "%s"' % aset)
+        elif card:
+            curs.execute('SELECT name, pr, basic FROM Word WHERE aset = "%s"' % aset)
         else:
-            curs.execute('SELECT expl, pr FROM Word WHERE aset = "%s"' % aset)
+            curs.execute('SELECT name, pr FROM Word WHERE aset = "%s"' % aset)
     except Exception as e:
         print(colored('something\'s wrong, catlog is from A to Z', 'red'))
         print(e)
@@ -327,15 +329,23 @@ def list_letter(aset, vb=False, output=False):
             print(format(aset, '-^40s'))
 
         for line in curs.fetchall():
-            expl = line[0]
+            name = line[0]
             pr = line[1]
             print('\n' + '=' * 40 + '\n')
             if not output:
                 print(colored('★ ' * pr, 'red', ), colored('☆ ' * (5 - pr), 'yellow'), sep='')
-                colorful_print(expl)
+                colorful_print(name)
+                if vb:
+                    basic = line[2]
+                    expl = line[3]
+                    colorful_print(basic)
+                    colorful_print(expl)
+                elif card:
+                    basic = line[2]
+                    colorful_print(basic)
             else:
                 print('★ ' * pr + '☆ ' * (5 - pr))
-                normal_print(expl)
+                normal_print(name)
     finally:
         curs.close()
         conn.close()
@@ -388,30 +398,42 @@ def list_priority(pr, vb=False, output=False):
         conn.close()
 
 
-def list_latest(limit, vb=False, output=False):
+def list_latest(limit, card=False, vb=False, output=False):
     '''list words by latest time you add to database.'''
 
     conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
     curs = conn.cursor()
     try:
-        if not vb:
-            curs.execute('SELECT name, pr, addtime FROM Word ORDER by datetime(addtime) DESC LIMIT  %d' % limit)
+        if vb:
+            curs.execute('SELECT name, pr, addtime, basic, expl FROM Word ORDER by datetime(addtime) DESC LIMIT  %d' % limit)
+        elif card:
+            curs.execute('SELECT name, pr, addtime, basic FROM Word ORDER by datetime(addtime) DESC LIMIT  %d' % limit)
         else:
-            curs.execute('SELECT expl, pr, addtime FROM Word ORDER by datetime(addtime) DESC LIMIT  %d' % limit)
+            curs.execute('SELECT name, pr, addtime FROM Word ORDER by datetime(addtime) DESC LIMIT  %d' % limit)
     except Exception as e:
         print(e)
         print(colored('something\'s wrong, please set the limit', 'red'))
     else:
         for line in curs.fetchall():
-            expl = line[0]
+            name = line[0]
             pr = line[1]
             print('\n' + '=' * 40 + '\n')
             if not output:
                 print(colored('★ ' * pr, 'red'), colored('☆ ' * (5 - pr), 'yellow'), sep='')
-                colorful_print(expl)
+                colorful_print(name)
+                if vb:
+                    colorful_print(line[3])
+                    colorful_print(line[4])
+                elif card:
+                    colorful_print(line[3])
             else:
                 print('★ ' * pr + '☆ ' * (5 - pr))
-                normal_print(expl)
+                normal_print(name)
+                if vb:
+                    normal_print(line[3])
+                    normal_print(line[4])
+                elif card:
+                    normal_print(line[3])
     finally:
         curs.close()
         conn.close()
@@ -491,6 +513,9 @@ def main():
     parser.add_argument('-v', '--verbose', dest='verbose',
                         action='store_true', help='verbose mode.')
 
+    parser.add_argument('-ca', '--card', dest='card',
+                        action='store_true', help='card mode.')
+
     parser.add_argument('-o', '--output', dest='output',
                         action='store_true', help='output mode.')
 
@@ -509,6 +534,7 @@ def main():
     args = parser.parse_args()
     is_verbose = args.verbose
     is_output = args.output
+    is_card = args.card
 
     #设置参数，可以每次打开，可以根据查询次数，对单词进行权重排序，提示复习
     #或者手动输入命令更新优先级
@@ -533,11 +559,11 @@ def main():
             print(colored('please set the priority', 'white', 'on_red'))
 
     elif args.letter:
-        list_letter(args.letter[0].upper(), is_verbose, is_output)
+        list_letter(args.letter[0].upper(), is_card, is_verbose, is_output)
 
     elif args.time:
         limit = int(args.time)
-        list_latest(limit, is_verbose, is_output)
+        list_latest(limit, is_card, is_verbose, is_output)
 
     elif args.priority:
         list_priority(args.priority, is_verbose, is_output)
