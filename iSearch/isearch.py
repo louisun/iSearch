@@ -20,7 +20,8 @@ DEFAULT_PATH = os.path.join(os.path.expanduser('~'), '.iSearch')
 CREATE_TABLE_WORD = '''
 CREATE TABLE IF NOT EXISTS Word
 (
-name     TEXT PRIMARY KEY,
+name     TEXT PRIMARY KEY NOT NULL,
+basic    TEXT,
 expl     TEXT,
 pr       INT DEFAULT 1,
 aset     CHAR[1],
@@ -134,14 +135,15 @@ def get_text(url):
     res = requests.get(url, headers=my_headers)
     data = res.text
     soup = bs4.BeautifulSoup(data, 'html.parser')
+    basic = ''
     expl = ''
-    expl += get_info(soup, '【词组】', 'div', 'word_group', deal_word_group)
-    expl += get_info(soup, '【同近义词】', 'div', 'synonyms', deal_synonyms)
-    expl += get_info(soup, '【词语辨析】', 'div', 'discriminate', deal_discriminate)
+    basic += get_info(soup, '【词组】', 'div', 'word_group', deal_word_group)
+    basic += get_info(soup, '【同近义词】', 'div', 'synonyms', deal_synonyms)
+    basic += get_info(soup, '【词语辨析】', 'div', 'discriminate', deal_discriminate)
     expl += get_info(soup, '【用例介绍】', 'div', 'collinsResult', deal_collins)
     expl += get_info(soup, '【双语例句】', 'div', 'bilingual', deal_bilingual)
     expl += get_info(soup, '【有道翻译】', 'div', 'fanyiToggle', deal_fanyiToggle)
-    return expl
+    return basic,expl
 
 
 def colorful_print(raw):
@@ -183,11 +185,12 @@ def search_online(word, printer=True):
 
     url = 'http://dict.youdao.com/w/ %s' % word
 
-    expl = get_text(url)
+    basic, expl = get_text(url)
 
     if printer:
+        colorful_print(basic)
         colorful_print(expl)
-    return expl
+    return basic, expl
 
 
 def search_database(word):
@@ -195,17 +198,18 @@ def search_database(word):
 
     conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
     curs = conn.cursor()
-    curs.execute(r'SELECT expl, pr FROM Word WHERE name LIKE "%s%%"' % word)
+    curs.execute(r'SELECT basic, expl, pr FROM Word WHERE name LIKE "%s%%"' % word)
     res = curs.fetchall()
     if res:
         print(colored(word + ' 在数据库中存在', 'white', 'on_green'))
         print()
-        print(colored('★ ' * res[0][1], 'red'), colored('☆ ' * (5 - res[0][1]), 'yellow'), sep='')
+        print(colored('★ ' * res[0][2], 'red'), colored('☆ ' * (5 - res[0][2]), 'yellow'), sep='')
         colorful_print(res[0][0])
+        colorful_print(res[0][1])
     else:
         print(colored(word + '提示: 不在本地，从有道词典查询', 'green', 'on_grey'))
         search_online(word)
-        input_msg = '若存入本地，请输入优先级(1~5) ，否则 Enter 跳过\n>>> '
+        input_msg = '若请输入优先级(1~5)，否则默认为3\n>>> '
         if sys.version_info[0] == 2:
             add_in_db_pr = raw_input(input_msg)
         else:
@@ -214,7 +218,12 @@ def search_database(word):
         if add_in_db_pr and add_in_db_pr.isdigit():
             if(int(add_in_db_pr) >= 1 and int(add_in_db_pr) <= 5):
                 add_word(word, int(add_in_db_pr))
-                print(colored('单词 {word} 已加入数据库中'.format(word=word), 'red', 'on_cyan'))
+                print(colored('单词 {word} 已加入数据库中,优先级为{num}'.format(word=word, \
+                              num=int(add_in_db_pr)),'red', 'on_cyan'))
+        else:
+            add_word(word, 3)
+            print(colored('单词 {word} 已加入数据库中,优先级为3'.format(word=word),\
+                              'red', 'on_cyan'))
     curs.close()
     conn.close()
 
@@ -224,7 +233,7 @@ def add_word(word, default_pr):
 
     conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
     curs = conn.cursor()
-    curs.execute('SELECT expl, pr FROM Word WHERE name = "%s"' % word)
+    curs.execute('SELECT basic, expl, pr FROM Word WHERE name = "%s"' % word)
     res = curs.fetchall()
     if res:
         #update : 这里可以提示是否更新，如果有某个字段不一致或者上次查询时间比较旧
@@ -234,9 +243,9 @@ def add_word(word, default_pr):
    #update: 这里可以添加模糊查询,通过某个参数指定，先显示近似查询，然后选择某一个后，再具体查询
 
     try:
-        expl = search_online(word, printer=False)
-        curs.execute('insert into word(name, expl, pr, aset) values ("%s", "%s", %d, "%s")' % (
-            word, expl, default_pr, word[0].upper()))
+        basic , expl = search_online(word, printer=False)
+        curs.execute('insert into word(name, basic, expl, pr, aset) values ("%s","%s" ,"%s", %d, "%s")'\
+                     % ( word,basic, expl, default_pr, word[0].upper()))
     except Exception as e:
         print(colored('something\'s wrong, you can\'t add the word', 'white', 'on_red'))
         print(e)
@@ -254,7 +263,7 @@ def delete_word(word):
     conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
     curs = conn.cursor()
     # search fisrt
-    curs.execute('SELECT expl, pr FROM Word WHERE name = "%s"' % word)
+    curs.execute('SELECT basic FROM Word WHERE name = "%s"' % word)
     res = curs.fetchall()
 
     if res:
@@ -280,7 +289,7 @@ def set_priority(word, pr):
 
     conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
     curs = conn.cursor()
-    curs.execute('SELECT expl, pr FROM Word WHERE name = "%s"' % word)
+    curs.execute('SELECT basic, expl, pr FROM Word WHERE name = "%s"' % word)
     res = curs.fetchall()
     if res:
         try:
@@ -421,11 +430,12 @@ def super_insert(input_file_path):
         word = line.strip()
         print(word)
         url = baseurl + word
-        expl = get_text(url)
+        basic, expl = get_text(url)
         try:
             # insert into database.
-            curs.execute("INSERT INTO Word(name, expl, pr, aset) VALUES (\"%s\", \"%s\", %d, \"%s\")" \
-                         % (word, expl, 1, word[0].upper()))
+            curs.execute("INSERT INTO Word(name, basic, expl, pr, aset) VALUES \
+                         (\"%s\", \"%s\", \"%s\", %d, \"%s\")" \
+                         % (word, basic, expl, 1, word[0].upper()))
         except Exception as e:
             print(word, "can't insert into database")
             # save the error in log file.
