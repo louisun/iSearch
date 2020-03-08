@@ -38,7 +38,7 @@ def get_info(soup, titleName, label, labelID, func):
                 if s.strip():
                     wlist.append(s.strip())
 
-        text = '\n\n' + titleName + '\n\n'
+        text = '\n' + titleName + '\n'
         text = func(wlist,text)
         text = re.sub('(\")', '\'', text)
     return text
@@ -137,9 +137,9 @@ def get_text(url):
     soup = bs4.BeautifulSoup(data, 'html.parser')
     basic = ''
     expl = ''
-    basic += get_info(soup, '【词组】', 'div', 'word_group', deal_word_group)
-    basic += get_info(soup, '【同近义词】', 'div', 'synonyms', deal_synonyms)
+    basic += get_info(soup, '【词语解析与近义词】', 'div', 'synonyms', deal_synonyms)
     basic += get_info(soup, '【词语辨析】', 'div', 'discriminate', deal_discriminate)
+    basic += get_info(soup, '【词组】', 'div', 'wordGroup', deal_word_group)
     expl += get_info(soup, '【用例介绍】', 'div', 'collinsResult', deal_collins)
     expl += get_info(soup, '【双语例句】', 'div', 'bilingual', deal_bilingual)
     expl += get_info(soup, '【有道翻译】', 'div', 'fanyiToggle', deal_fanyiToggle)
@@ -220,6 +220,8 @@ def search_database(word):
                 add_word(word, int(add_in_db_pr))
                 print(colored('单词 {word} 已加入数据库中,优先级为{num}'.format(word=word, \
                               num=int(add_in_db_pr)),'red', 'on_cyan'))
+            elif(1 == int(add_in_db_pr)):
+                print("dont insert into database")
         else:
             add_word(word, 3)
             print(colored('单词 {word} 已加入数据库中,优先级为3'.format(word=word),\
