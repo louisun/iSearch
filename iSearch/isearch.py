@@ -58,17 +58,13 @@ def deal_synonyms(wlist, text):
     tmp_flag = True
     for i in wlist:
         if '.' in i:
-            if tmp_flag:
-                tmp_flag = False
-                text = text + '\n' + i + '\n'
-            else:
-                text = text + '\n\n' + i + '\n'
+            text = text + i + '\n'
         else:
             text = text + i
     return text
 
 def deal_discriminate(wlist, text):
-    text += '-' * 40 + '\n' + format('↓ ' + wlist[0] + ' 的辨析 ↓', '^40s') + '\n' + '-' * 40 + '\n\n'
+    text += '-' * 40 + '\n' + format('↓ ' + wlist[0] + ' 的辨析 ↓', '^40s') + '\n' + '-' * 40 + '\n'
 
     for x in wlist[1:]:
         if x in '以上来源于':
@@ -76,7 +72,7 @@ def deal_discriminate(wlist, text):
         if re.match(r'^[a-zA-Z]+$', x):
             text = text + x + ' >> '
         else:
-            text = text + x + '\n\n'
+            text = text + x + '\n'
 
     return text
 
@@ -101,7 +97,7 @@ def deal_bilingual(ls5, text5):
     for word in ls5:
         if not pt.match(word):
             if word.endswith(('（', '。', '？', '！', '。”', '）')):
-                text5 = text5 + word + '\n\n'
+                text5 = text5 + word + '\n'
                 continue
 
             if u'\u4e00' <= word[0] <= u'\u9fa5':
@@ -114,7 +110,7 @@ def deal_bilingual(ls5, text5):
 def deal_fanyiToggle(ls6, text6):
     for word in ls6:
         if not word.startswith('以上为机器翻译结果'):
-            text6 = text6 + word + '\n\n'
+            text6 = text6 + word + '\n'
             continue
         break
 
@@ -198,30 +194,40 @@ def search_database(word):
 
     conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
     curs = conn.cursor()
-    curs.execute(r'SELECT basic, expl, pr FROM Word WHERE name LIKE "%s%%"' % word)
+    #模糊查询
+    if '#' in word:
+        curs.execute('SELECT name, basic, expl, pr FROM Word WHERE name LIKE "%%%s%%"' % word)
+    #具体查询
+    else:
+        curs.execute('SELECT name, basic, expl, pr FROM Word WHERE name LIKE "%s"' % word)
     res = curs.fetchall()
     if res:
         print(colored(word + ' 在数据库中存在', 'white', 'on_green'))
         print()
-        print(colored('★ ' * res[0][2], 'red'), colored('☆ ' * (5 - res[0][2]), 'yellow'), sep='')
-        colorful_print(res[0][0])
-        colorful_print(res[0][1])
+        for result in res:
+            print(colored('★ ' * result[3], 'red'), colored('☆ ' * (5 - result[3]), 'yellow'), sep='')
+            colorful_print(result[0])
+            colorful_print(result[1])
+
     else:
         print(colored(word + '提示: 不在本地，从有道词典查询', 'green', 'on_grey'))
         search_online(word)
-        input_msg = '若请输入优先级(1~5)，否则默认为3\n>>> '
+        input_msg = '请输入,放弃保存0，优先级(1~5)(默认为3)，6自定义\n>>> '
         if sys.version_info[0] == 2:
             add_in_db_pr = raw_input(input_msg)
         else:
             add_in_db_pr = input(input_msg)
 
         if add_in_db_pr and add_in_db_pr.isdigit():
-            if(int(add_in_db_pr) >= 1 and int(add_in_db_pr) <= 5):
+            if int(add_in_db_pr) >= 1 and int(add_in_db_pr) <= 5:
                 add_word(word, int(add_in_db_pr))
                 print(colored('单词 {word} 已加入数据库中,优先级为{num}'.format(word=word, \
                               num=int(add_in_db_pr)),'red', 'on_cyan'))
-            elif(1 == int(add_in_db_pr)):
+            elif 0 == int(add_in_db_pr):
                 print("dont insert into database")
+            elif 6 == int(add_in_db_pr):
+                add_word_self(word, 6)
+
         else:
             add_word(word, 3)
             print(colored('单词 {word} 已加入数据库中,优先级为3'.format(word=word),\
@@ -229,10 +235,41 @@ def search_database(word):
     curs.close()
     conn.close()
 
+def add_word_self(word, default_pr):
+    '''add the word or phrase to database.'''
+    input_msg = "please input word meaning\n"
+    update_flag = 0
+    if sys.version_info[0] == 2:
+        word_basic = raw_input(input_msg)
+    else:
+        word_basic = input(input_msg)
+
+    conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
+    curs = conn.cursor()
+    curs.execute('SELECT basic, expl, pr FROM Word WHERE name = "%s"' % word)
+    res = curs.fetchall()
+    if res:
+        update_flag = 1
+
+    try:
+        if 1 == update_flag:
+            curs.execute('UPDATE word SET basic="%s", pr=%d, aset="%s" WHERE name="%s"'\
+                     % ( word_basic, default_pr, word[0].upper(), name))
+        else:
+            curs.execute('INSERT INTO word(name, basic, pr, aset) VALUES ("%s","%s", %d, "%s")'\
+                     % ( word, word_basic, default_pr, word[0].upper()))
+    except Exception as e:
+        print(colored('something\'s wrong, you can\'t add the word', 'white', 'on_red'))
+        print(e)
+    else:
+        conn.commit()
+        print(colored('%s:%s has been inserted into database' % (word, word_basic), 'green'))
+    finally:
+        curs.close()
+        conn.close()
 
 def add_word(word, default_pr):
     '''add the word or phrase to database.'''
-
     conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
     curs = conn.cursor()
     curs.execute('SELECT basic, expl, pr FROM Word WHERE name = "%s"' % word)
@@ -247,7 +284,7 @@ def add_word(word, default_pr):
     try:
         basic , expl = search_online(word, printer=False)
         curs.execute('insert into word(name, basic, expl, pr, aset) values ("%s","%s" ,"%s", %d, "%s")'\
-                     % ( word,basic, expl, default_pr, word[0].upper()))
+                     % ( word, basic, expl, default_pr, word[0].upper()))
     except Exception as e:
         print(colored('something\'s wrong, you can\'t add the word', 'white', 'on_red'))
         print(e)

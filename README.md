@@ -105,7 +105,7 @@ function s(){
 >
 >-o      -output     输出模式
 
-
+>-ca     --card      显示单词名和基本信息
 
 
 
