@@ -7,6 +7,7 @@ import re
 import sqlite3
 import requests
 import bs4
+import json
 from termcolor import colored
 
 # Python2 compatibility
