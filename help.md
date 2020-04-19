@@ -12,6 +12,9 @@ sudo apt install python-pip
    a. 通过函数指针形式传输显示函数，
    b. 显示函数接口定义(参见下方 接口定义 1)
 2. 使用JSON格式进行存放
+    - 字典 ：类型名 + 数组
+    - 中文 + 英文 作为一个数组单元
+    - 中文 和 英文 间通过\n进行分割
 3. 将数据库中存放单元更加细化
 
 
@@ -26,3 +29,19 @@ sudo apt install python-pip
    - 提示字段颜色
    - 主要内容颜色
 
+# 数据库定义
+```
+CREATE TABLE IF NOT EXISTS Word
+(
+name     TEXT PRIMARY KEY NOT NULL,
+synonyms TEXT,
+discriminate TEXT,
+word_group TEXT,
+collins TEXT,
+bilingual TEXT,
+fanyiToggle TEXT,
+pr       INT DEFAULT 1,
+aset     CHAR[1],
+addtime  TIMESTAMP NOT NULL DEFAULT (DATETIME('NOW', 'LOCALTIME'))
+)
+```

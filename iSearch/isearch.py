@@ -22,12 +22,17 @@ DEFAULT_PATH = os.path.join(os.path.expanduser('~'), '.iSearch')
 CREATE_TABLE_WORD = '''
 CREATE TABLE IF NOT EXISTS Word
 (
-name     TEXT PRIMARY KEY NOT NULL,
-basic    TEXT,
-expl     TEXT,
-pr       INT DEFAULT 1,
-aset     CHAR[1],
-addtime  TIMESTAMP NOT NULL DEFAULT (DATETIME('NOW', 'LOCALTIME'))
+name            TEXT PRIMARY KEY NOT NULL,
+user_defined    TEXT,
+synonyms        TEXT,
+discriminate    TEXT,
+word_group      TEXT,
+collins         TEXT,
+bilingual       TEXT,
+fanyiToggle     TEXT,
+pr              INT DEFAULT 1,
+aset            CHAR[1],
+addtime         TIMESTAMP NOT NULL DEFAULT (DATETIME('NOW', 'LOCALTIME'))
 )
 '''
 def get_info(soup, titleName, label, labelID, func):
@@ -49,17 +54,23 @@ def deal_word_group(wlist):
         else:
             word_group_list.append(x) 
 
-    return word_goup_list
+    return word_group_list
 
 def deal_synonyms(wlist):
     synonyms_list = []
     tmp_text = ''
     for i in wlist:
         if '.' in i:
+            #下一个元素，保存当前元素
             if '' != tmp_text:
                 synonyms_list.append(tmp_text)
-            tmp_text = i
+            #这里添加例子如下 adj. 温柔的；柔软的；脆弱的；幼稚的；难对付的
+            tmp_text = i + '\n'
         else:
+            #这里添加近义词 
+            #2->adj. 温柔的；柔软的；脆弱的；幼稚的；难对付的\nsoft
+            #2->adj. 温柔的；柔软的；脆弱的；幼稚的；难对付的\nsoft,
+            #2->adj. 温柔的；柔软的；脆弱的；幼稚的；难对付的\nsoft,fond
             tmp_text = tmp_text + i
 
     if '' != tmp_text:
@@ -103,6 +114,7 @@ def deal_collins(wlist):
 
 def deal_bilingual(ls5):
     pt = re.compile(r'.*?\..*?\..*?|《.*》')
+    text5 = ""
 
     for word in ls5:
         if not pt.match(word):
@@ -143,15 +155,14 @@ def get_text(url):
     res = requests.get(url, headers=my_headers)
     data = res.text
     soup = bs4.BeautifulSoup(data, 'html.parser')
-    basic = {}
-    expl = {}
-    basic['synonyms'] = get_info(soup, '【词语解析与近义词】', 'div', 'synonyms', deal_synonyms)
-    basic['discriminate'] = get_info(soup, '【词语辨析】', 'div', 'discriminate', deal_discriminate)
-    basic['word_group'] = get_info(soup, '【词组】', 'div', 'wordGroup', deal_word_group)
-    expl['collins'] = get_info(soup, '【用例介绍】', 'div', 'collinsResult', deal_collins)
-    expl['bilingual'] = get_info(soup, '【双语例句】', 'div', 'bilingual', deal_bilingual)
-    expl['fanyiToggle'] = get_info(soup, '【有道翻译】', 'div', 'fanyiToggle', deal_fanyiToggle)
-    return basic,expl
+    word_dict = {}
+    word_dict['synonyms'] = get_info(soup, '【词语解析与近义词】', 'div', 'synonyms', deal_synonyms)
+    word_dict['discriminate'] = get_info(soup, '【词语辨析】', 'div', 'discriminate', deal_discriminate)
+    word_dict['word_group'] = get_info(soup, '【词组】', 'div', 'wordGroup', deal_word_group)
+    word_dict['collins'] = get_info(soup, '【用例介绍】', 'div', 'collinsResult', deal_collins)
+    word_dict['bilingual'] = get_info(soup, '【双语例句】', 'div', 'bilingual', deal_bilingual)
+    word_dict['fanyiToggle'] = get_info(soup, '【有道翻译】', 'div', 'fanyiToggle', deal_fanyiToggle)
+    return word_dict
 
 
 def colorful_print(raw):
@@ -188,42 +199,45 @@ def normal_print(raw):
             print(line + '\n')
 
 
-def search_online(word, printer=True):
+def search_online(word):
     '''search the word or phrase on http://dict.youdao.com.'''
 
     url = 'http://dict.youdao.com/w/ %s' % word
 
-    basic, expl = get_text(url)
-
-    if printer:
-        colorful_print(basic)
-        colorful_print(expl)
-    return basic, expl
+    word_dict = get_text(url)
+    return word_dict
 
 
-def search_database(word):
+def search_database(word, displayer):
     '''offline search.'''
 
     conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
     curs = conn.cursor()
     #模糊查询
     if '#' in word:
-        curs.execute('SELECT name, basic, expl, pr FROM Word WHERE name LIKE "%%%s%%"' % word)
+        curs.execute('SELECT name, synonyms, discriminate, word_group, collins, \
+            bilingual, fanyiToggle, pr FROM Word WHERE name LIKE "%%%s%%"' % word)
     #具体查询
     else:
-        curs.execute('SELECT name, basic, expl, pr FROM Word WHERE name LIKE "%s"' % word)
+        curs.execute('SELECT name, synonyms, discriminate, word_group, collins, \
+            bilingual, fanyiToggle, pr FROM Word WHERE name LIKE "%s"' % word)
     res = curs.fetchall()
     if res:
         print(colored(word + ' 在数据库中存在', 'white', 'on_green'))
-        print()
         for result in res:
-            print(colored('★ ' * result[3], 'red'), colored('☆ ' * (5 - result[3]), 'yellow'), sep='')
-            colorful_print(result[0])
-            colorful_print(result[1])
+            print(colored('★ ' * result[7], 'red'), colored('☆ ' * (5 - result[7]), 'yellow'), sep='')
+            word_dict["synonyms"] = json.loads(result[1])
+            word_dict["discriminate"] = json.loads(result[2])
+            word_dict["word_group"] = json.loads(result[3])
+            word_dict["collins"] = json.loads(result[4])
+            word_dict["bilingual"] = json.loads(result[5])
+            word_dict["fanyiToggle"] = json.loads(result[6])
+            displayer.show(word_dict)
 
     else:
         print(colored(word + '提示: 不在本地，从有道词典查询', 'green', 'on_grey'))
-        search_online(word)
+        word_dict = search_online(word)
+        displayer.show(word_dict)
         input_msg = '请输入,放弃保存0，优先级(1~5)(默认为3)，6自定义\n>>> '
         if sys.version_info[0] == 2:
             add_in_db_pr = raw_input(input_msg)
@@ -232,22 +246,22 @@ def search_database(word):
 
         if add_in_db_pr and add_in_db_pr.isdigit():
             if int(add_in_db_pr) >= 1 and int(add_in_db_pr) <= 5:
-                add_word(word, int(add_in_db_pr))
+                add_word(word, word_dict, int(add_in_db_pr))
                 print(colored('单词 {word} 已加入数据库中,优先级为{num}'.format(word=word, \
                               num=int(add_in_db_pr)),'red', 'on_cyan'))
             elif 0 == int(add_in_db_pr):
-                print("dont insert into database")
+                print("won't insert %s into database" %(word))
             elif 6 == int(add_in_db_pr):
                 add_word_self(word, 6)
 
         else:
-            add_word(word, 3)
+            add_word(word,word_dict, 3)
             print(colored('单词 {word} 已加入数据库中,优先级为3'.format(word=word),\
                               'red', 'on_cyan'))
     curs.close()
     conn.close()
 
-def add_word_self(word, default_pr):
+def add_word_self(word, word_dict, default_pr):
     '''add the word or phrase to database.'''
     input_msg = "please input word meaning\n"
     update_flag = 0
@@ -256,20 +270,12 @@ def add_word_self(word, default_pr):
     else:
         word_basic = input(input_msg)
 
-    conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
-    curs = conn.cursor()
-    curs.execute('SELECT basic, expl, pr FROM Word WHERE name = "%s"' % word)
-    res = curs.fetchall()
-    if res:
-        update_flag = 1
-
     try:
-        if 1 == update_flag:
-            curs.execute('UPDATE word SET basic="%s", pr=%d, aset="%s" WHERE name="%s"'\
-                     % ( word_basic, default_pr, word[0].upper(), name))
-        else:
-            curs.execute('INSERT INTO word(name, basic, pr, aset) VALUES ("%s","%s", %d, "%s")'\
-                     % ( word, word_basic, default_pr, word[0].upper()))
+        if add_word(word, word_dict, default_pr):
+            curs.execute('UPDATE word SET user_defined="%s", pr=%d, \
+                     aset="%s" WHERE name="%s"' % ( word_basic, default_pr, 
+                     word[0].upper(), name))
+
     except Exception as e:
         print(colored('something\'s wrong, you can\'t add the word', 'white', 'on_red'))
         print(e)
@@ -280,11 +286,11 @@ def add_word_self(word, default_pr):
         curs.close()
         conn.close()
 
-def add_word(word, default_pr):
+def add_word(word, word_dict, default_pr):
     '''add the word or phrase to database.'''
     conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
     curs = conn.cursor()
-    curs.execute('SELECT basic, expl, pr FROM Word WHERE name = "%s"' % word)
+    curs.execute('SELECT synonyms, discriminate, word_group, collins, bilingual, fanyiToggle, pr FROM Word WHERE name = "%s"' % word)
     res = curs.fetchall()
     if res:
         #update : 这里可以提示是否更新，如果有某个字段不一致或者上次查询时间比较旧
@@ -294,18 +300,30 @@ def add_word(word, default_pr):
    #update: 这里可以添加模糊查询,通过某个参数指定，先显示近似查询，然后选择某一个后，再具体查询
 
     try:
-        basic , expl = search_online(word, printer=False)
-        curs.execute('insert into word(name, basic, expl, pr, aset) values ("%s","%s" ,"%s", %d, "%s")'\
-                     % ( word, basic, expl, default_pr, word[0].upper()))
+        synonyms = json.dumps(word_dict["synonyms"])
+        discriminate = json.dumps(word_dict["discriminate"])
+        word_group = json.dumps(word_dict["word_group"])
+        collins = json.dumps(word_dict["collins"])
+        bilingual = json.dumps(word_dict["bilingual"])
+        fanyiToggle = json.dumps(word_dict["fanyiToggle"])
+
+        curs.execute('insert into word(name, synonyms, discriminate, word_group,\
+                     collins, bilingual, fanyiToggle, pr, aset) \
+                     values ("%s","%s","%s","%s","%s","%s","%s", %d, "%s")'\
+                     % ( word, synonyms, discriminate, word_group, collins, 
+                        bilingual, fanyiToggle, default_pr, word[0].upper()))
+
     except Exception as e:
         print(colored('something\'s wrong, you can\'t add the word', 'white', 'on_red'))
         print(e)
+        return False
     else:
         conn.commit()
         print(colored('%s has been inserted into database' % word, 'green'))
     finally:
         curs.close()
         conn.close()
+        return True
 
 
 def delete_word(word):
@@ -340,7 +358,7 @@ def set_priority(word, pr):
 
     conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
     curs = conn.cursor()
-    curs.execute('SELECT basic, expl, pr FROM Word WHERE name = "%s"' % word)
+    curs.execute('SELECT synonyms, discriminate, word_group, collins, bilingual, fanyiToggle, pr FROM Word WHERE name = "%s"' % word)
     res = curs.fetchall()
     if res:
         try:
@@ -365,7 +383,7 @@ def list_letter(aset, card=False, vb=False, output=False):
     curs = conn.cursor()
     try:
         if vb:
-            curs.execute('SELECT name, pr, basic, expl  FROM Word WHERE aset = "%s"' % aset)
+            curs.execute('SELECT name, pr, synonyms, discriminate, word_group, collins, bilingual, fanyiToggle  FROM Word WHERE aset = "%s"' % aset)
         elif card:
             curs.execute('SELECT name, pr, basic FROM Word WHERE aset = "%s"' % aset)
         else:
@@ -456,7 +474,7 @@ def list_latest(limit, card=False, vb=False, output=False):
     curs = conn.cursor()
     try:
         if vb:
-            curs.execute('SELECT name, pr, addtime, basic, expl FROM Word ORDER by datetime(addtime) DESC LIMIT  %d' % limit)
+            curs.execute('SELECT name, pr, addtime, synonyms, discriminate, word_group, collins, bilingual, fanyiToggle FROM Word ORDER by datetime(addtime) DESC LIMIT  %d' % limit)
         elif card:
             curs.execute('SELECT name, pr, addtime, basic FROM Word ORDER by datetime(addtime) DESC LIMIT  %d' % limit)
         else:
@@ -503,12 +521,12 @@ def super_insert(input_file_path):
         word = line.strip()
         print(word)
         url = baseurl + word
-        basic, expl = get_text(url)
+        word_dict = get_text(url)
         try:
             # insert into database.
-            curs.execute("INSERT INTO Word(name, basic, expl, pr, aset) VALUES \
+            curs.execute("INSERT INTO Word(name, synonyms, discriminate, word_group, collins, bilingual, fanyiToggle, pr, aset) VALUES \
                          (\"%s\", \"%s\", \"%s\", %d, \"%s\")" \
-                         % (word, basic, expl, 1, word[0].upper()))
+                         % (word, synonyms, discriminate, word_group, collins, bilingual, fanyiToggle, 1, word[0].upper()))
         except Exception as e:
             print(word, "can't insert into database")
             # save the error in log file.
@@ -546,7 +564,7 @@ def count_word(arg):
 
 def main():
     # 显示模式设置
-    display = Displayer()
+    displayer = Displayer()
 
     parser = argparse.ArgumentParser(description='Search words')
 
@@ -595,8 +613,9 @@ def main():
     #应该能支持不同显示版本
 
     if args.add:
+        #这个用于导入批量单词，基本还是用查询
         default_pr = 1 if not args.set else int(args.set)
-        add_word(' '.join(args.add), default_pr)
+        #add_word(' '.join(args.add), None, default_pr)
 
     elif args.delete:
         delete_word(' '.join(args.delete))
@@ -634,8 +653,9 @@ def main():
         count_word(args.count)
 
     elif args.word:
-        if not os.path.exists(os.path.join(DEFAULT_PATH, 'word.db')):
+        if not os.path.exists(DEFAULT_PATH):
             os.mkdir(DEFAULT_PATH)
+        if not os.path.exists(os.path.join(DEFAULT_PATH, 'word.db')):
             with open(os.path.join(DEFAULT_PATH, 'word_list.txt'), 'w') as f:
                 pass
             conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
@@ -645,7 +665,7 @@ def main():
             curs.close()
             conn.close()
         word = ' '.join(args.word)
-        search_database(word)
+        search_database(word, displayer)
 
 
 if __name__ == '__main__':
