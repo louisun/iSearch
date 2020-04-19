@@ -8,6 +8,7 @@ import sqlite3
 import requests
 import bs4
 import json
+from display import Displayer
 from termcolor import colored
 
 # Python2 compatibility
@@ -32,52 +33,59 @@ addtime  TIMESTAMP NOT NULL DEFAULT (DATETIME('NOW', 'LOCALTIME'))
 def get_info(soup, titleName, label, labelID, func):
     result = soup.find(label, id = labelID)
     wlist = []
-    text = ''
     if result:
         for s in result.descendants:
             if isinstance(s, bs4.element.NavigableString):
                 if s.strip():
                     wlist.append(s.strip())
 
-        text = '\n' + titleName + '\n'
-        text = func(wlist,text)
-        text = re.sub('(\")', '\'', text)
-    return text
+    return func(wlist)
 
-def deal_word_group(wlist, text):
-    if len(wlist) < 3:
-        text = text + wlist[0] + ' ' + wlist[1] + '\n'
-    else:
-        for i, x in enumerate(wlist[:-3]):
-            if i % 2:
-                text = text + x + '\n'
-            else:
-                text = text + x + ' '
-    return text
+def deal_word_group(wlist):
+    word_group_list = []
+    for i, x in enumerate(wlist):
+        if i % 2:
+            word_group_list[len(word_group_list) - 1] = word_group_list[len(word_group_list) - 1] + ' ' + x
+        else:
+            word_group_list.append(x) 
 
-def deal_synonyms(wlist, text):
-    tmp_flag = True
+    return word_goup_list
+
+def deal_synonyms(wlist):
+    synonyms_list = []
+    tmp_text = ''
     for i in wlist:
         if '.' in i:
-            text = text + i + '\n'
+            if '' != tmp_text:
+                synonyms_list.append(tmp_text)
+            tmp_text = i
         else:
-            text = text + i
-    return text
+            tmp_text = tmp_text + i
 
-def deal_discriminate(wlist, text):
-    text += '-' * 40 + '\n' + format('↓ ' + wlist[0] + ' 的辨析 ↓', '^40s') + '\n' + '-' * 40 + '\n'
+    if '' != tmp_text:
+        synonyms_list.append(tmp_text)
+
+    return synonyms_list
+
+def deal_discriminate(wlist):
+    discriminate_list = []
+    discriminate_list.append(wlist[0])
+    text = ""
 
     for x in wlist[1:]:
         if x in '以上来源于':
             break
         if re.match(r'^[a-zA-Z]+$', x):
-            text = text + x + ' >> '
+            text = text + x + ' : '
         else:
-            text = text + x + '\n'
+            text = text + x
+            discriminate_list.append(text)
+            text = ""
 
-    return text
+    return discriminate_list
 
-def deal_collins(wlist, text):
+def deal_collins(wlist):
+    text = ""
     if wlist[1].startswith('('):
         # Phrase
         text = text + wlist[0] + '\n'
@@ -87,12 +95,13 @@ def deal_collins(wlist, text):
         line = ' '.join(wlist[3:])
 
     text += re.sub('例：', '\n例：', line)
-    text = re.sub(r'(\d+\. )', r'\n\n\1', text)
+    text = re.sub(r'(\d+\. )', r'\n\1', text)
     text = re.sub(r'(\s+?→\s+)', r'  →  ', text)
     text = re.sub('\s{10}\s+', '', text)
-    return text
 
-def deal_bilingual(ls5, text5):
+    return text.split('\n')
+
+def deal_bilingual(ls5):
     pt = re.compile(r'.*?\..*?\..*?|《.*》')
 
     for word in ls5:
@@ -106,16 +115,18 @@ def deal_bilingual(ls5, text5):
                     text5 += word
             else:
                 text5 = text5 + ' ' + word
-    return text5
 
-def deal_fanyiToggle(ls6, text6):
+    return text5.split("\n")
+
+def deal_fanyiToggle(ls6):
+    fanyiToggle_list = []
     for word in ls6:
         if not word.startswith('以上为机器翻译结果'):
-            text6 = text6 + word + '\n'
+            fanyiToggle_list.append(word)
             continue
         break
-
-    return text6
+    
+    return fanyiToggle_list
 
 
 
@@ -132,14 +143,14 @@ def get_text(url):
     res = requests.get(url, headers=my_headers)
     data = res.text
     soup = bs4.BeautifulSoup(data, 'html.parser')
-    basic = ''
-    expl = ''
-    basic += get_info(soup, '【词语解析与近义词】', 'div', 'synonyms', deal_synonyms)
-    basic += get_info(soup, '【词语辨析】', 'div', 'discriminate', deal_discriminate)
-    basic += get_info(soup, '【词组】', 'div', 'wordGroup', deal_word_group)
-    expl += get_info(soup, '【用例介绍】', 'div', 'collinsResult', deal_collins)
-    expl += get_info(soup, '【双语例句】', 'div', 'bilingual', deal_bilingual)
-    expl += get_info(soup, '【有道翻译】', 'div', 'fanyiToggle', deal_fanyiToggle)
+    basic = {}
+    expl = {}
+    basic['synonyms'] = get_info(soup, '【词语解析与近义词】', 'div', 'synonyms', deal_synonyms)
+    basic['discriminate'] = get_info(soup, '【词语辨析】', 'div', 'discriminate', deal_discriminate)
+    basic['word_group'] = get_info(soup, '【词组】', 'div', 'wordGroup', deal_word_group)
+    expl['collins'] = get_info(soup, '【用例介绍】', 'div', 'collinsResult', deal_collins)
+    expl['bilingual'] = get_info(soup, '【双语例句】', 'div', 'bilingual', deal_bilingual)
+    expl['fanyiToggle'] = get_info(soup, '【有道翻译】', 'div', 'fanyiToggle', deal_fanyiToggle)
     return basic,expl
 
 
@@ -534,6 +545,9 @@ def count_word(arg):
 
 
 def main():
+    # 显示模式设置
+    display = Displayer()
+
     parser = argparse.ArgumentParser(description='Search words')
 
     parser.add_argument(dest='word', help='the word you want to search.', nargs='*')
