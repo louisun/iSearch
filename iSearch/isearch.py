@@ -51,7 +51,6 @@ def word_dict_to_json(word_dict):
 
 # func json_to_word_dict
 # purpose: change list to json type, for saving
-imp: syntax error
 # other: because of ’ can't exist, so change it to ASCII(%27)
 def json_to_word_dict(result):
     word_dict = {}
