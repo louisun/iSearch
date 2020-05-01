@@ -45,3 +45,4 @@ aset     CHAR[1],
 addtime  TIMESTAMP NOT NULL DEFAULT (DATETIME('NOW', 'LOCALTIME'))
 )
 ```
+
