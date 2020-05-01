@@ -51,6 +51,7 @@ def word_dict_to_json(word_dict):
 
 # func json_to_word_dict
 # purpose: change list to json type, for saving
+imp: syntax error
 # other: because of ’ can't exist, so change it to ASCII(%27)
 def json_to_word_dict(result):
     word_dict = {}
@@ -327,16 +328,7 @@ def add_word(word, word_dict, default_pr):
    #update: 这里可以添加模糊查询,通过某个参数指定，先显示近似查询，然后选择某一个后，再具体查询
 
     try:
-        print(word_dict["synonyms"])
         word_dict_to_json(word_dict)
-        print("---------------")
-        print(word_dict["synonyms"])
-        print(word_dict["discriminate"])
-        print(word_dict["word_group"])
-        print(word_dict["collins"])
-        print(word_dict["bilingual"])
-        print(word_dict["fanyiToggle"])
-        print("---------------")
 
         curs.execute('''insert into word(name, synonyms, discriminate, word_group,
                      collins, bilingual, fanyiToggle, pr, aset)
