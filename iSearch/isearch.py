@@ -35,6 +35,35 @@ aset            CHAR[1],
 addtime         TIMESTAMP NOT NULL DEFAULT (DATETIME('NOW', 'LOCALTIME'))
 )
 '''
+
+# func word_dict_to_json
+# purpose: change list to json type, for saving
+# other: because of ’ can't exist, so change it to ASCII(%27)
+def word_dict_to_json(word_dict):
+    word_dict["synonyms"]       = json.dumps(word_dict["synonyms"])
+    word_dict["discriminate"]   = json.dumps(word_dict["discriminate"])
+    word_dict["word_group"]     = json.dumps(word_dict["word_group"])
+    word_dict["collins"]        = json.dumps(word_dict["collins"])
+    word_dict["bilingual"]      = json.dumps(word_dict["bilingual"])
+    word_dict["fanyiToggle"]    = json.dumps(word_dict["fanyiToggle"])
+    for key, value in word_dict.items():
+        word_dict[key] = re.sub('\'', '%27', value)
+
+# func json_to_word_dict
+# purpose: change list to json type, for saving
+# other: because of ’ can't exist, so change it to ASCII(%27)
+def json_to_word_dict(result):
+    word_dict = {}
+    word_dict["synonyms"]       = json.loads(re.sub("%27", "\'", result[1]))
+    word_dict["discriminate"]   = json.loads(re.sub("%27", "\'", result[2]))
+    word_dict["word_group"]     = json.loads(re.sub("%27", "\'", result[3]))
+    word_dict["collins"]        = json.loads(re.sub("%27", "\'", result[4]))
+    word_dict["bilingual"]      = json.loads(re.sub("%27", "\'", result[5]))
+    word_dict["fanyiToggle"]    = json.loads(re.sub("%27", "\'", result[6]))
+
+    return word_dict
+
+
 def get_info(soup, titleName, label, labelID, func):
     result = soup.find(label, id = labelID)
     wlist = []
@@ -80,6 +109,9 @@ def deal_synonyms(wlist):
 
 def deal_discriminate(wlist):
     discriminate_list = []
+    if 0 == len(wlist):
+        return discriminate_list
+
     discriminate_list.append(wlist[0])
     text = ""
 
@@ -97,6 +129,9 @@ def deal_discriminate(wlist):
 
 def deal_collins(wlist):
     text = ""
+    if len(wlist) < 2:
+        return text
+
     if wlist[1].startswith('('):
         # Phrase
         text = text + wlist[0] + '\n'
@@ -226,12 +261,7 @@ def search_database(word, displayer):
         print(colored(word + ' 在数据库中存在', 'white', 'on_green'))
         for result in res:
             print(colored('★ ' * result[7], 'red'), colored('☆ ' * (5 - result[7]), 'yellow'), sep='')
-            word_dict["synonyms"] = json.loads(result[1])
-            word_dict["discriminate"] = json.loads(result[2])
-            word_dict["word_group"] = json.loads(result[3])
-            word_dict["collins"] = json.loads(result[4])
-            word_dict["bilingual"] = json.loads(result[5])
-            word_dict["fanyiToggle"] = json.loads(result[6])
+            word_dict = json_to_word_dict(result)
             displayer.show(word_dict)
 
     else:
@@ -247,8 +277,6 @@ def search_database(word, displayer):
         if add_in_db_pr and add_in_db_pr.isdigit():
             if int(add_in_db_pr) >= 1 and int(add_in_db_pr) <= 5:
                 add_word(word, word_dict, int(add_in_db_pr))
-                print(colored('单词 {word} 已加入数据库中,优先级为{num}'.format(word=word, \
-                              num=int(add_in_db_pr)),'red', 'on_cyan'))
             elif 0 == int(add_in_db_pr):
                 print("won't insert %s into database" %(word))
             elif 6 == int(add_in_db_pr):
@@ -256,8 +284,7 @@ def search_database(word, displayer):
 
         else:
             add_word(word,word_dict, 3)
-            print(colored('单词 {word} 已加入数据库中,优先级为3'.format(word=word),\
-                              'red', 'on_cyan'))
+
     curs.close()
     conn.close()
 
@@ -300,18 +327,23 @@ def add_word(word, word_dict, default_pr):
    #update: 这里可以添加模糊查询,通过某个参数指定，先显示近似查询，然后选择某一个后，再具体查询
 
     try:
-        synonyms = json.dumps(word_dict["synonyms"])
-        discriminate = json.dumps(word_dict["discriminate"])
-        word_group = json.dumps(word_dict["word_group"])
-        collins = json.dumps(word_dict["collins"])
-        bilingual = json.dumps(word_dict["bilingual"])
-        fanyiToggle = json.dumps(word_dict["fanyiToggle"])
+        print(word_dict["synonyms"])
+        word_dict_to_json(word_dict)
+        print("---------------")
+        print(word_dict["synonyms"])
+        print(word_dict["discriminate"])
+        print(word_dict["word_group"])
+        print(word_dict["collins"])
+        print(word_dict["bilingual"])
+        print(word_dict["fanyiToggle"])
+        print("---------------")
 
-        curs.execute('insert into word(name, synonyms, discriminate, word_group,\
-                     collins, bilingual, fanyiToggle, pr, aset) \
-                     values ("%s","%s","%s","%s","%s","%s","%s", %d, "%s")'\
-                     % ( word, synonyms, discriminate, word_group, collins, 
-                        bilingual, fanyiToggle, default_pr, word[0].upper()))
+        curs.execute('''insert into word(name, synonyms, discriminate, word_group,
+                     collins, bilingual, fanyiToggle, pr, aset)
+                     values ('%s','%s','%s','%s','%s','%s','%s', %d, '%s')'''
+                     % ( word, word_dict["synonyms"], word_dict["discriminate"], word_dict["word_group"], 
+                        word_dict["collins"], word_dict["bilingual"], word_dict["fanyiToggle"]
+                        , default_pr, word[0].upper()))
 
     except Exception as e:
         print(colored('something\'s wrong, you can\'t add the word', 'white', 'on_red'))
@@ -319,7 +351,7 @@ def add_word(word, word_dict, default_pr):
         return False
     else:
         conn.commit()
-        print(colored('%s has been inserted into database' % word, 'green'))
+        print(colored('%s has been inserted into database, 优先级为%d' % (word, default_pr), 'green'))
     finally:
         curs.close()
         conn.close()

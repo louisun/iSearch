@@ -16,6 +16,7 @@ class Mode():
     MIDDLE = 4
     LONG = 8
 
+
 class Displayer:
     def __init__(self):
         self.__mode = Mode.COLORED | Mode.SHORT 
