@@ -13,10 +13,10 @@ setup(
     keywords=['dictionary', 'youdao', 'word'],
     version=iSearch.__version__,
     packages=['iSearch'],
-    url='https://github.com/louisun/iSearch',
+    url='https://github.com/birdFSS/iSearch',
     license='MIT',
-    author='louisun',
-    author_email='luyang.sun@outlook.com',
+    author='birdFSS',
+    author_email='ffhbird@gmail.com',
     description='有道词典单词查询、存储和管理的命令行工具',
     install_requires=[
         'requests','termcolor','bs4'
