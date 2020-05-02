@@ -3,13 +3,10 @@ from __future__ import print_function, unicode_literals
 import sys
 import argparse
 import os
-import re
 import sqlite3
-import requests
-import bs4
-import json
 from display import Displayer
 from termcolor import colored
+from parser import Parser
 
 # Python2 compatibility
 if sys.version_info[0] == 2:
@@ -35,170 +32,6 @@ aset            CHAR[1],
 addtime         TIMESTAMP NOT NULL DEFAULT (DATETIME('NOW', 'LOCALTIME'))
 )
 '''
-
-# func word_dict_to_json
-# purpose: change list to json type, for saving
-# other: because of ’ can't exist, so change it to ASCII(%27)
-def word_dict_to_json(word_dict):
-    word_dict["synonyms"]       = json.dumps(word_dict["synonyms"])
-    word_dict["discriminate"]   = json.dumps(word_dict["discriminate"])
-    word_dict["word_group"]     = json.dumps(word_dict["word_group"])
-    word_dict["collins"]        = json.dumps(word_dict["collins"])
-    word_dict["bilingual"]      = json.dumps(word_dict["bilingual"])
-    word_dict["fanyiToggle"]    = json.dumps(word_dict["fanyiToggle"])
-    for key, value in word_dict.items():
-        word_dict[key] = re.sub('\'', '%27', value)
-
-# func json_to_word_dict
-# purpose: change list to json type, for saving
-# other: because of ’ can't exist, so change it to ASCII(%27)
-def json_to_word_dict(result):
-    word_dict = {}
-    word_dict["synonyms"]       = json.loads(re.sub("%27", "\'", result[1]))
-    word_dict["discriminate"]   = json.loads(re.sub("%27", "\'", result[2]))
-    word_dict["word_group"]     = json.loads(re.sub("%27", "\'", result[3]))
-    word_dict["collins"]        = json.loads(re.sub("%27", "\'", result[4]))
-    word_dict["bilingual"]      = json.loads(re.sub("%27", "\'", result[5]))
-    word_dict["fanyiToggle"]    = json.loads(re.sub("%27", "\'", result[6]))
-
-    return word_dict
-
-
-def get_info(soup, titleName, label, labelID, func):
-    result = soup.find(label, id = labelID)
-    wlist = []
-    if result:
-        for s in result.descendants:
-            if isinstance(s, bs4.element.NavigableString):
-                if s.strip():
-                    wlist.append(s.strip())
-
-    return func(wlist)
-
-def deal_word_group(wlist):
-    word_group_list = []
-    for i, x in enumerate(wlist):
-        if i % 2:
-            word_group_list[len(word_group_list) - 1] = word_group_list[len(word_group_list) - 1] + ' ' + x
-        else:
-            word_group_list.append(x) 
-
-    return word_group_list
-
-def deal_synonyms(wlist):
-    synonyms_list = []
-    tmp_text = ''
-    for i in wlist:
-        if '.' in i:
-            #下一个元素，保存当前元素
-            if '' != tmp_text:
-                synonyms_list.append(tmp_text)
-            #这里添加例子如下 adj. 温柔的；柔软的；脆弱的；幼稚的；难对付的
-            tmp_text = i + '\n'
-        else:
-            #这里添加近义词 
-            #2->adj. 温柔的；柔软的；脆弱的；幼稚的；难对付的\nsoft
-            #2->adj. 温柔的；柔软的；脆弱的；幼稚的；难对付的\nsoft,
-            #2->adj. 温柔的；柔软的；脆弱的；幼稚的；难对付的\nsoft,fond
-            tmp_text = tmp_text + i
-
-    if '' != tmp_text:
-        synonyms_list.append(tmp_text)
-
-    return synonyms_list
-
-def deal_discriminate(wlist):
-    discriminate_list = []
-    if 0 == len(wlist):
-        return discriminate_list
-
-    discriminate_list.append(wlist[0])
-    text = ""
-
-    for x in wlist[1:]:
-        if x in '以上来源于':
-            break
-        if re.match(r'^[a-zA-Z]+$', x):
-            text = text + x + ' : '
-        else:
-            text = text + x
-            discriminate_list.append(text)
-            text = ""
-
-    return discriminate_list
-
-def deal_collins(wlist):
-    text = ""
-    if len(wlist) < 2:
-        return text
-
-    if wlist[1].startswith('('):
-        # Phrase
-        text = text + wlist[0] + '\n'
-        line = ' '.join(wlist[2:])
-    else:
-        text = text + (' '.join(wlist[:2])) + '\n'
-        line = ' '.join(wlist[3:])
-
-    text += re.sub('例：', '\n例：', line)
-    text = re.sub(r'(\d+\. )', r'\n\1', text)
-    text = re.sub(r'(\s+?→\s+)', r'  →  ', text)
-    text = re.sub('\s{10}\s+', '', text)
-
-    return text.split('\n')
-
-def deal_bilingual(ls5):
-    pt = re.compile(r'.*?\..*?\..*?|《.*》')
-    text5 = ""
-
-    for word in ls5:
-        if not pt.match(word):
-            if word.endswith(('（', '。', '？', '！', '。”', '）')):
-                text5 = text5 + word + '\n'
-                continue
-
-            if u'\u4e00' <= word[0] <= u'\u9fa5':
-                if word != '更多双语例句':
-                    text5 += word
-            else:
-                text5 = text5 + ' ' + word
-
-    return text5.split("\n")
-
-def deal_fanyiToggle(ls6):
-    fanyiToggle_list = []
-    for word in ls6:
-        if not word.startswith('以上为机器翻译结果'):
-            fanyiToggle_list.append(word)
-            continue
-        break
-    
-    return fanyiToggle_list
-
-
-
-def get_text(url):
-    my_headers = {
-        'Accept': 'text/html, application/xhtml+xml, application/xml;q=0.9, image/webp, */*;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, sdch',
-        'Accept-Language': 'zh-CN, zh;q=0.8',
-        'Upgrade-Insecure-Requests': '1',
-        'Host': 'dict.youdao.com',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) \
-                       Chrome/48.0.2564.116 Safari/537.36'
-    }
-    res = requests.get(url, headers=my_headers)
-    data = res.text
-    soup = bs4.BeautifulSoup(data, 'html.parser')
-    word_dict = {}
-    word_dict['synonyms'] = get_info(soup, '【词语解析与近义词】', 'div', 'synonyms', deal_synonyms)
-    word_dict['discriminate'] = get_info(soup, '【词语辨析】', 'div', 'discriminate', deal_discriminate)
-    word_dict['word_group'] = get_info(soup, '【词组】', 'div', 'wordGroup', deal_word_group)
-    word_dict['collins'] = get_info(soup, '【用例介绍】', 'div', 'collinsResult', deal_collins)
-    word_dict['bilingual'] = get_info(soup, '【双语例句】', 'div', 'bilingual', deal_bilingual)
-    word_dict['fanyiToggle'] = get_info(soup, '【有道翻译】', 'div', 'fanyiToggle', deal_fanyiToggle)
-    return word_dict
-
 
 def colorful_print(raw):
     '''print colorful text in terminal.'''
@@ -234,19 +67,17 @@ def normal_print(raw):
             print(line + '\n')
 
 
-def search_online(word):
+def search_online(word, word_parser):
     '''search the word or phrase on http://dict.youdao.com.'''
 
     url = 'http://dict.youdao.com/w/ %s' % word
 
-    word_dict = get_text(url)
+    word_dict = word_parser.get_text(url)
     return word_dict
 
-
-def search_database(word, displayer):
+def search_database(word, conn, word_parser):
     '''offline search.'''
-
-    conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
+    word_dict = {}
     curs = conn.cursor()
     #模糊查询
     if '#' in word:
@@ -261,13 +92,23 @@ def search_database(word, displayer):
         print(colored(word + ' 在数据库中存在', 'white', 'on_green'))
         for result in res:
             print(colored('★ ' * result[7], 'red'), colored('☆ ' * (5 - result[7]), 'yellow'), sep='')
-            word_dict = json_to_word_dict(result)
-            displayer.show(word_dict)
+            word_dict = word_parser.json_to_word_dict(result)
+    
+    return word_dict
 
+
+
+def search_word(word, word_parser, displayer):
+    conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
+    word_dict = search_database(word, conn, word_parser)
+    curs = conn.cursor()
+    if word_dict:
+        displayer.show(word_dict)
     else:
         print(colored(word + '提示: 不在本地，从有道词典查询', 'green', 'on_grey'))
-        word_dict = search_online(word)
+        word_dict = search_online(word, word_parser)
         displayer.show(word_dict)
+
         input_msg = '请输入,放弃保存0，优先级(1~5)(默认为3)，6自定义\n>>> '
         if sys.version_info[0] == 2:
             add_in_db_pr = raw_input(input_msg)
@@ -276,19 +117,19 @@ def search_database(word, displayer):
 
         if add_in_db_pr and add_in_db_pr.isdigit():
             if int(add_in_db_pr) >= 1 and int(add_in_db_pr) <= 5:
-                add_word(word, word_dict, int(add_in_db_pr))
+                add_word(word, word_dict, word_parser, int(add_in_db_pr))
             elif 0 == int(add_in_db_pr):
                 print("won't insert %s into database" %(word))
             elif 6 == int(add_in_db_pr):
-                add_word_self(word, 6)
+                add_word_self(word, word_dict, word_parser, 6)
 
         else:
-            add_word(word,word_dict, 3)
+            add_word(word,word_dict, word_parser, 3)
 
     curs.close()
     conn.close()
 
-def add_word_self(word, word_dict, default_pr):
+def add_word_self(word, word_dict, word_parser, default_pr):
     '''add the word or phrase to database.'''
     input_msg = "please input word meaning\n"
     update_flag = 0
@@ -298,7 +139,7 @@ def add_word_self(word, word_dict, default_pr):
         word_basic = input(input_msg)
 
     try:
-        if add_word(word, word_dict, default_pr):
+        if add_word(word, word_dict, word_parser, default_pr):
             curs.execute('UPDATE word SET user_defined="%s", pr=%d, \
                      aset="%s" WHERE name="%s"' % ( word_basic, default_pr, 
                      word[0].upper(), name))
@@ -313,7 +154,7 @@ def add_word_self(word, word_dict, default_pr):
         curs.close()
         conn.close()
 
-def add_word(word, word_dict, default_pr):
+def add_word(word, word_dict, word_parser, default_pr):
     '''add the word or phrase to database.'''
     conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
     curs = conn.cursor()
@@ -327,7 +168,7 @@ def add_word(word, word_dict, default_pr):
    #update: 这里可以添加模糊查询,通过某个参数指定，先显示近似查询，然后选择某一个后，再具体查询
 
     try:
-        word_dict_to_json(word_dict)
+        word_parser.word_dict_to_json(word_dict)
 
         curs.execute('''insert into word(name, synonyms, discriminate, word_group,
                      collins, bilingual, fanyiToggle, pr, aset)
@@ -531,7 +372,7 @@ def list_latest(limit, card=False, vb=False, output=False):
         conn.close()
 
 
-def super_insert(input_file_path):
+def super_insert(input_file_path, word_parser):
     log_file_path = os.path.join(DEFAULT_PATH, 'log.txt')
     baseurl = 'http://dict.youdao.com/w/'
     word_list = open(input_file_path, 'r', encoding='utf-8')
@@ -544,7 +385,7 @@ def super_insert(input_file_path):
         word = line.strip()
         print(word)
         url = baseurl + word
-        word_dict = get_text(url)
+        word_dict = word_parser.get_text(url)
         try:
             # insert into database.
             curs.execute("INSERT INTO Word(name, synonyms, discriminate, word_group, collins, bilingual, fanyiToggle, pr, aset) VALUES \
@@ -588,6 +429,8 @@ def count_word(arg):
 def main():
     # 显示模式设置
     displayer = Displayer()
+    # 设置解析模式
+    word_parser = Parser()
 
     parser = argparse.ArgumentParser(description='Search words')
 
@@ -667,9 +510,9 @@ def main():
     elif args.file:
         input_file_path = args.file
         if input_file_path.endswith('.txt'):
-            super_insert(input_file_path)
+            super_insert(input_file_path, word_parser)
         elif input_file_path == 'default':
-            super_insert(os.path.join(DEFAULT_PATH, 'word_list.txt'))
+            super_insert(os.path.join(DEFAULT_PATH, 'word_list.txt'), word_parser)
         else:
             print(colored('please use a correct path of text file', 'white', 'on_red'))
     elif args.count:
@@ -688,7 +531,7 @@ def main():
             curs.close()
             conn.close()
         word = ' '.join(args.word)
-        search_database(word, displayer)
+        search_word(word, word_parser, displayer)
 
 
 if __name__ == '__main__':
