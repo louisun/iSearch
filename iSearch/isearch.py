@@ -15,6 +15,7 @@ if sys.version_info[0] == 2:
 
 # Default database path is ~/.iSearch.
 DEFAULT_PATH = os.path.join(os.path.expanduser('~'), '.iSearch')
+ISCOLORED = 1
 
 CREATE_TABLE_WORD = '''
 CREATE TABLE IF NOT EXISTS Word
@@ -32,40 +33,6 @@ aset            CHAR[1],
 addtime         TIMESTAMP NOT NULL DEFAULT (DATETIME('NOW', 'LOCALTIME'))
 )
 '''
-
-def colorful_print(raw):
-    '''print colorful text in terminal.'''
-
-    lines = raw.split('\n')
-    colorful = True
-    detail = False
-    for line in lines:
-        if line:
-            if line.startswith('例'):
-                print(line + '\n')
-                continue
-            elif line.startswith('【'):
-                print(colored(line, 'white', 'on_blue') + '\n')
-                detail = True
-                continue
-            elif colorful:
-                aolorful = False
-                print(colored(line, 'green', None) + '\n')
-                continue
-
-            if not detail:
-                print(colored(line + '\n', 'yellow'))
-            else:
-                print(colored(line, 'cyan') + '\n')
-
-
-def normal_print(raw):
-    ''' no colorful text, for output.'''
-    lines = raw.split('\n')
-    for line in lines:
-        if line:
-            print(line + '\n')
-
 
 def search_online(word, word_parser):
     '''search the word or phrase on http://dict.youdao.com.'''
@@ -95,8 +62,6 @@ def search_database(word, conn, word_parser):
             word_dict = word_parser.json_to_word_dict(result)
     
     return word_dict
-
-
 
 def search_word(word, word_parser, displayer):
     conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
@@ -240,7 +205,7 @@ def set_priority(word, pr):
         print(colored('%s not exists in the database' % word, 'white', 'on_red'))
 
 
-def list_letter(aset, card=False, vb=False, output=False):
+def list_letter(aset, displayer, card=False, vb=False, output=False):
     '''list words by letter, from a-z (ingore case).'''
 
     conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
@@ -267,7 +232,7 @@ def list_letter(aset, card=False, vb=False, output=False):
             print('\n' + '=' * 40 + '\n')
             if not output:
                 print(colored('★ ' * pr, 'red', ), colored('☆ ' * (5 - pr), 'yellow'), sep='')
-                colorful_print(name)
+                displayer.show_core(name, ISCOLORED)
                 if vb:
                     basic = line[2]
                     expl = line[3]
@@ -284,7 +249,7 @@ def list_letter(aset, card=False, vb=False, output=False):
         conn.close()
 
 
-def list_priority(pr, vb=False, output=False):
+def list_priority(pr, displayer, vb=False, output=False):
     '''
     list words by priority, like this:
     1   : list words which the priority is 1,
@@ -425,25 +390,20 @@ def count_word(arg):
     curs.close()
     conn.close()
 
-
-def main():
-    # 显示模式设置
-    displayer = Displayer()
-    # 设置解析模式
-    word_parser = Parser()
-
-    parser = argparse.ArgumentParser(description='Search words')
-
+def register_argument(parser):
     parser.add_argument(dest='word', help='the word you want to search.', nargs='*')
-
-    parser.add_argument('-f', '--file', dest='file',
-                        action='store', help='add words list from text file.')
 
     parser.add_argument('-a', '--add', dest='add',
                         action='store', nargs='+', help='insert word into database.')
 
     parser.add_argument('-d', '--delete', dest='delete',
                         action='store', nargs='+', help='delete word from database.')
+
+    parser.add_argument('-c', '--count', dest='count',
+                        action='store', help='count the word.')
+
+    parser.add_argument('-f', '--file', dest='file',
+                        action='store', help='add words list from text file.')
 
     parser.add_argument('-s', '--set', dest='set',
                         action='store', help='set priority.')
@@ -466,8 +426,18 @@ def main():
     parser.add_argument('-l', '--letter', dest='letter',
                         action='store', help='list words by letter.')
 
-    parser.add_argument('-c', '--count', dest='count',
-                        action='store', help='count the word.')
+
+
+
+def main():
+    # 显示模式设置
+    displayer = Displayer()
+    # 设置解析模式
+    word_parser = Parser()
+
+    parser = argparse.ArgumentParser(description='Search words')
+
+    register_argument(parser)
 
     args = parser.parse_args()
     is_verbose = args.verbose
@@ -498,14 +468,14 @@ def main():
             print(colored('please set the priority', 'white', 'on_red'))
 
     elif args.letter:
-        list_letter(args.letter[0].upper(), is_card, is_verbose, is_output)
+        list_letter(args.letter[0].upper(), displayer, is_card, is_verbose, is_output)
 
     elif args.time:
         limit = int(args.time)
         list_latest(limit, is_card, is_verbose, is_output)
 
     elif args.priority:
-        list_priority(args.priority, is_verbose, is_output)
+        list_priority(args.priority, displayer, is_verbose, is_output)
 
     elif args.file:
         input_file_path = args.file

@@ -4,6 +4,15 @@
 import json
 from termcolor import colored
 
+type_to_chinese = {
+    "synonyms":"【词语解析与近义词】",
+    "discriminate":"【词语辨析】",
+    "word_group":"【词组】",
+    "collins":"【用例介绍】",
+    "bilingual":"【双语例句】",
+    "fanyiToggle":"【有道翻译】"
+}
+
 def is_title(dataItem):
     if dataItem.startswith('例') or dataItem.startswith('【'):
         return true
@@ -18,8 +27,9 @@ class Mode():
 
 
 class Displayer:
-    def __init__(self):
-        self.__mode = Mode.COLORED | Mode.SHORT 
+    def __init__(self, mode=Mode.SHORT, isColored=1):
+        self.__mode = Mode.SHORT 
+        self.__colored = isColored
         self.__text_color = 'blue'
         self.__text_backcolor = 'on_white'
         self.__title_color = 'white'
@@ -38,31 +48,57 @@ class Displayer:
     def title_print(self, title):
         print(colored(title, self.__title_color, self.__title_backcolor))
 
+    def show_core(self, text, isColored=1):
+        if 1 == isColored:
+            print(colored(text, self.__text_color, self.__text_backcolor))
+        else:
+            print(text)
+
+    '''
+    1. 因为固定顺序，所以不使用key,value in *.item()形式遍历
+    2. 其中，根据标记，提前返回
+    '''
     def show(self, word_dict):
+        if "name" in word_dict:
+            print(word_dict["name"])
+
         #标准是数组
-        self.title_print("【词语解析与近义词】")
-        for item in word_dict["synonyms"]:
-            print(colored(item, self.__text_color, self.__text_backcolor))
+        if "synonyms" in word_dict and word_dict["synonyms"]:
+            self.title_print(type_to_chinese["synonyms"])
+            for item in word_dict["synonyms"]:
+                self.show_core(item, self.__colored)
 
-        self.title_print("\n【词语辨析】")
-        for item in word_dict["discriminate"]:
-            print(colored(item, self.__text_color, self.__text_backcolor))
+        if "discriminate" in word_dict and word_dict["discriminate"]:
+            self.title_print("\n" + type_to_chinese["discriminate"])
+            for item in word_dict["discriminate"]:
+                self.show_core(item, self.__colored)
 
-        self.title_print("\n【词组】")
-        for item in word_dict["word_group"]:
-            print(colored(item, self.__text_color, self.__text_backcolor))
+        if self.__mode & Mode.SHORT:
+            return True
 
-        self.title_print("\n【用例介绍】")
-        for item in word_dict["collins"]:
-            print(colored(item, self.__text_color, self.__text_backcolor))
+        if "word_group" in word_dict and  word_dict["word_group"]:
+            self.title_print("\n" + type_to_chinese["word_group"])
+            for item in word_dict["word_group"]:
+                self.show_core(item, self.__colored)
 
-        self.title_print("\n【双语例句】")
-        for item in word_dict["bilingual"]:
-            print(colored(item, self.__text_color, self.__text_backcolor))
+        if self.__mode & Mode.MIDDLE:
+            return True
+    
+        if "collins" in word_dict and word_dict["collins"]:
+            self.title_print("\n" + type_to_chinese["collins"])
+            for item in word_dict["collins"]:
+                self.show_core(item, self.__colored)
 
-        self.title_print("\n【有道翻译】")
-        for item in word_dict["fanyiToggle"]:
-            print(colored(item, self.__text_color, self.__text_backcolor))
+        if "bilingual" in word_dict and word_dict["bilingual"]:
+            self.title_print("\n" + type_to_chinese["bilingual"])
+            for item in word_dict["bilingual"]:
+                self.show_core(item, self.__colored)
+
+        if "fanyiToggle" in word_dict and word_dict["fanyiToggle"]:
+            self.title_print("\n" + type_to_chinese["fanyiToggle"])
+            for item in word_dict["fanyiToggle"]:
+                self.show_core(item, self.__colored)
+
         return True
 
 
@@ -79,10 +115,4 @@ class Displayer:
                         print(colored(dataItem, text_color.backcolor, title_color.textcolor))
                     else:
                         print(dataItem)
-
-
-
-
-
-
 
