@@ -19,16 +19,17 @@ def is_title(dataItem):
     else:
         return false
 
-class Mode():
+class Display_mode():
     COLORED = 1
-    SHORT = 2
-    MIDDLE = 4
-    LONG = 8
+    NAME = 2
+    SHORT = 4
+    MIDDLE = 8
+    LONG = 16
 
 
 class Displayer:
-    def __init__(self, mode=Mode.SHORT, isColored=1):
-        self.__mode = Mode.SHORT 
+    def __init__(self, mode=Display_mode.SHORT, isColored=1):
+        self.__mode = Display_mode.SHORT 
         self.__colored = isColored
         self.__text_color = 'blue'
         self.__text_backcolor = 'on_white'
@@ -58,9 +59,12 @@ class Displayer:
     1. 因为固定顺序，所以不使用key,value in *.item()形式遍历
     2. 其中，根据标记，提前返回
     '''
-    def show(self, word_dict):
+    def show(self, word_dict, mode=Display_mode.MIDDLE):
         if "name" in word_dict:
-            print(word_dict["name"])
+            self.show_core(word_dict["name"], self.__colored)
+
+        if mode & Display_mode.NAME:
+            return True
 
         #标准是数组
         if "synonyms" in word_dict and word_dict["synonyms"]:
@@ -73,7 +77,7 @@ class Displayer:
             for item in word_dict["discriminate"]:
                 self.show_core(item, self.__colored)
 
-        if self.__mode & Mode.SHORT:
+        if mode & Display_mode.SHORT:
             return True
 
         if "word_group" in word_dict and  word_dict["word_group"]:
@@ -81,7 +85,7 @@ class Displayer:
             for item in word_dict["word_group"]:
                 self.show_core(item, self.__colored)
 
-        if self.__mode & Mode.MIDDLE:
+        if mode & Display_mode.MIDDLE:
             return True
     
         if "collins" in word_dict and word_dict["collins"]:

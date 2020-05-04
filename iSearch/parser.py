@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-import json
-import re
 import requests
 import bs4
+import re
 
 # func get_info
 # purpose: find div content by id, and call func to deal with it
@@ -124,36 +123,6 @@ def deal_fanyiToggle(ls6):
 # 提供解析的各种方法
 # 常见命名：word_parser
 class Parser:
-    # func word_dict_to_json
-    # purpose: change list to json type, for saving
-    # other: because of ’ can't exist, so change it to ASCII(%27)
-    @staticmethod
-    def word_dict_to_json(word_dict):
-        word_dict["synonyms"]       = json.dumps(word_dict["synonyms"])
-        word_dict["discriminate"]   = json.dumps(word_dict["discriminate"])
-        word_dict["word_group"]     = json.dumps(word_dict["word_group"])
-        word_dict["collins"]        = json.dumps(word_dict["collins"])
-        word_dict["bilingual"]      = json.dumps(word_dict["bilingual"])
-        word_dict["fanyiToggle"]    = json.dumps(word_dict["fanyiToggle"])
-        for key, value in word_dict.items():
-            word_dict[key] = re.sub('\'', '%27', value)
-    
-    # func json_to_word_dict
-    # purpose: change list to json type, for saving
-    # other: because of ’ can't exist, so change it to ASCII(%27)
-    # return : word_dict dict 
-    @staticmethod
-    def json_to_word_dict(result):
-        word_dict = {}
-        word_dict["synonyms"]       = json.loads(re.sub("%27", "\'", result[1]))
-        word_dict["discriminate"]   = json.loads(re.sub("%27", "\'", result[2]))
-        word_dict["word_group"]     = json.loads(re.sub("%27", "\'", result[3]))
-        word_dict["collins"]        = json.loads(re.sub("%27", "\'", result[4]))
-        word_dict["bilingual"]      = json.loads(re.sub("%27", "\'", result[5]))
-        word_dict["fanyiToggle"]    = json.loads(re.sub("%27", "\'", result[6]))
-    
-        return word_dict
-    
     @staticmethod
     def get_text(url):
         my_headers = {

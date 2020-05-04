@@ -97,8 +97,6 @@ function s(){
 >
 >-t     --time     列出最近加入的n个单词
 >
->-l     --catalog    列出A-Z开头的单词目录
->
 >-s     --set        设置单词的优先级
 >
 >-v     --verbose    查看详细信息

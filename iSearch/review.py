@@ -2,6 +2,8 @@
 # coding=utf-8
 import time
 
+DAY_TO_SECOND = 24 * 3600
+
 class Reviewer:
     def __init__(self):
         print("init reviewer")
@@ -16,24 +18,28 @@ class Reviewer:
 
     # interval_time单位为day
     def add_interval_day(self, interval_day):
-        self.__interval_times.append(interval_day * 24 * 3600)
+        self.__interval_times.append(interval_day * DAY_TO_SECOND)
 
     def del_interval_day(self, interval_day):
-        self.__interval_times.remove(interval_day * 24 * 3600)
+        self.__interval_times.remove(interval_day * DAY_TO_SECOND)
 
-    def get_words(self, conn):
-        cur_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+    def get_words(self, word_sql, displayer):
         word_dict_list = []
         for interval_time in self.__interval_times:
-            curs = conn.cursor()
             words = []
-            begin_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time() - interval_time))
-            curs.excute('SELECT * FROM word WHERE time between "%s" and "%s"' % (begin_time, cur_time))
-            res = curs.fetchall()
-            for result in res:
-                word_dict = {}
-                word_dict[""]
+            cur_time = time.time()
+            begin_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(cur_time - interval_time))
+            end_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(cur_time - interval_time + DAY_TO_SECOND))
+            tmp_list = word_sql.select_word("addtime between '%s' and '%s'" %(begin_time, end_time))
+            if tmp_list:
+                displayer.show(tmp_list)
+                input_msg = '按任意键继续, 退出请输入quit'
+                msg = raw_input(input_msg)
+                if "quit" == msg:
+                    return True
 
+
+        return True
 
 
 
