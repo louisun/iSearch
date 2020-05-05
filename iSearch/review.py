@@ -30,21 +30,23 @@ class Reviewer:
             cur_time = time.time()
             begin_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(cur_time - interval_time))
             end_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(cur_time - interval_time + DAY_TO_SECOND))
-            tmp_list = word_sql.select_word("addtime between '%s' and '%s'" %(begin_time, end_time))
-            if tmp_list:
-                displayer.show(tmp_list)
-                input_msg = '按任意键继续, 退出请输入quit'
-                msg = raw_input(input_msg)
+            word_dict_list = word_sql.select_word("addtime between '%s' and '%s'" %(begin_time, end_time))
+            print("-----------%d day ago-----------" % (interval_time / DAY_TO_SECOND))
+            for word_dict in word_dict_list:
+                displayer.show(word_dict)
+                input_msg = '按任意键继续, 输入quit退出'
+                if sys.version_info[0] == 2:
+                    msg = raw_input(input_msg)
+                else:
+                    msg = input(input_msg)
+
                 if "quit" == msg:
-                    return True
+                    break
 
 
         return True
 
-
-
 # 自测
-
 def time_test():
     reviewer = Reviewer()
     localtime = time.localtime(time.time())

@@ -73,13 +73,13 @@ def search_word(word, word_parser, word_sql, displayer):
             elif 0 == int(add_in_db_pr):
                 print("won't insert %s into database" %(word))
             elif 6 == int(add_in_db_pr):
-                add_word_self(word, word_dict, word_parser, 6)
+                add_word_self(word, word_dict, word_sql, word_parser, 6)
 
         else:
             add_word(word, word_dict, word_sql, 3)
 
 
-def add_word_self(word, word_dict, word_parser, default_pr):
+def add_word_self(word, word_dict, word_sql, word_parser, default_pr):
     '''add the word or phrase to database.'''
     input_msg = "please input word meaning\n"
     update_flag = 0
@@ -88,21 +88,9 @@ def add_word_self(word, word_dict, word_parser, default_pr):
     else:
         word_basic = input(input_msg)
 
-    try:
-        if add_word(word, word_dict, word_parser, default_pr):
-            curs.execute('UPDATE word SET user_defined="%s", pr=%d, \
-                     aset="%s" WHERE name="%s"' % ( word_basic, default_pr, 
-                     word[0].upper(), name))
-
-    except Exception as e:
-        print(colored('something\'s wrong, you can\'t add the word', 'white', 'on_red'))
-        print(e)
-    else:
-        conn.commit()
-        print(colored('%s:%s has been inserted into database' % (word, word_basic), 'green'))
-    finally:
-        curs.close()
-        conn.close()
+    if add_word(word, word_dict, word_sql, default_pr):
+        word_sql.update_word("user_defined='%s', pr=%d" % (word_basic, default_pr), 
+                                "name='%s'" % (word))
 
 def add_word(word, word_dict, word_sql, default_pr):
     '''add the word or phrase to database.'''
@@ -112,9 +100,12 @@ def add_word(word, word_dict, word_sql, default_pr):
         print(colored(word + ' 在数据库中已存在，不需要添加', 'white', 'on_red'))
         sys.exit()
 
+    if "name" not in word_dict:
+        word_dict["name"] = word
+    if "pr" not in word_dict:
+        word_dict["pr"] = default_pr
     #update: 这里可以添加模糊查询,通过某个参数指定，先显示近似查询，然后选择某一个后，再具体查询
-    word_sql.insert_word(word_dict)
-
+    return word_sql.insert_word(word_dict)
 
 
 def delete_word(word, word_sql):
@@ -133,11 +124,12 @@ def set_priority(word, pr, word_sql):
     '''
     count = word_sql.count_word("name='%s'" % word)
     if count:
-        word_sql.update_word("pr=%d", "name='%s'" % (pr, word))
+        if word_sql.update_word("pr=%d", "name='%s'" % (pr, word)):
+            print(colored('the priority of  %s has been reset to  %s' % (word, pr), 'green'))
+        else:
+            print(colored('something\'s wrong, you can\'t reset priority', 'white', 'on_red'))
     else:
         print(colored('%s not exists in the database' % word, 'white', 'on_red'))
-
-
 
 def list_priority(pr, word_sql, displayer, vb=False, output=False):
     '''
@@ -305,17 +297,6 @@ def main():
             print(colored('please use a correct path of text file', 'white', 'on_red'))
 
     elif args.word:
-        if not os.path.exists(DEFAULT_PATH):
-            os.mkdir(DEFAULT_PATH)
-        if not os.path.exists(os.path.join(DEFAULT_PATH, 'word.db')):
-            with open(os.path.join(DEFAULT_PATH, 'word_list.txt'), 'w') as f:
-                pass
-            conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
-            curs = conn.cursor()
-            curs.execute(CREATE_TABLE_WORD)
-            conn.commit()
-            curs.close()
-            conn.close()
         word = ' '.join(args.word)
         search_word(word, word_parser, word_sql, displayer)
 

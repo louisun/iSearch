@@ -4,6 +4,7 @@ import json
 import re
 import sqlite3
 import os
+from termcolor import colored
 
 DEFAULT_PATH = os.path.join(os.path.expanduser('~'), '.iSearch')
 
@@ -26,7 +27,15 @@ addtime         TIMESTAMP NOT NULL DEFAULT (DATETIME('NOW', 'LOCALTIME'))
 
 class Word_sql:
     def __init__(self):
+        if not os.path.exists(DEFAULT_PATH):
+            os.mkdir(DEFAULT_PATH)
+        if not os.path.exists(os.path.join(DEFAULT_PATH, 'word.db')):
+            with open(os.path.join(DEFAULT_PATH, 'word_list.txt'), 'w') as f:
+                pass
         self.__conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
+        curs = self.__conn.cursor()
+        curs.execute(CREATE_TABLE_WORD)
+        self.__conn.commit()
 
     # func word_dict_to_json
     # purpose: change list to json type, for saving
@@ -40,7 +49,8 @@ class Word_sql:
         word_dict["bilingual"]      = json.dumps(word_dict["bilingual"])
         word_dict["fanyiToggle"]    = json.dumps(word_dict["fanyiToggle"])
         for key, value in word_dict.items():
-            word_dict[key] = re.sub('\'', '%27', value)
+            if isinstance(value, str):
+                word_dict[key] = re.sub('\'', '%27', value)
 
     # func json_to_word_dict
     # purpose: change list to json type, for saving
@@ -83,41 +93,40 @@ class Word_sql:
             return False
         else:
             print(colored('%s has been deleted from database' % word, 'green'))
-            conn.commit()
-        finally:
+            self.__conn.commit()
             return True
 
     def update_word(self, set_part, condition):
         try:
-            curs.execute('UPDATE Word SET pr= %d WHERE name = "%s"' % (pr, word))
+            curs = self.__conn.cursor()
+            curs.execute('UPDATE Word SET %s WHERE %s' % (set_part, condition))
         except Exception as e:
-            print(colored('something\'s wrong, you can\'t reset priority', 'white', 'on_red'))
+            print(colored('something\'s wrong, you can\'t set %s' % (set_part), 'white', 'on_red'))
             print(e)
             return False
         else:
-            print(colored('the priority of  %s has been reset to  %s' % (word, pr), 'green'))
-            conn.commit()
-        finally:
+            self.__conn.commit()
+            print("set %s success" % set_part)
             return True
 
     def insert_word(self, word_dict):
         try:
             curs = self.__conn.cursor()
             self.word_dict_to_json(word_dict)
-            curs.execute('''insert into word(name, synonyms, discriminate, word_group,
+            curs.execute('''insert into Word(name, synonyms, discriminate, word_group,
                          collins, bilingual, fanyiToggle, pr, aset)
                          values ('%s','%s','%s','%s','%s','%s','%s', %d, '%s')'''
-                         % ( word, word_dict["synonyms"], word_dict["discriminate"], word_dict["word_group"], 
-                            word_dict["collins"], word_dict["bilingual"], word_dict["fanyiToggle"]
-                            , default_pr, word[0].upper()))
+                         % ( word_dict["name"], word_dict["synonyms"], word_dict["discriminate"], 
+                            word_dict["word_group"], word_dict["collins"], word_dict["bilingual"], 
+                            word_dict["fanyiToggle"], word_dict["pr"], word_dict["name"][0].upper()))
         except Exception as e:
             print(colored('something\'s wrong, you can\'t add the word', 'white', 'on_red'))
             print(e)
             return False
         else:
-            conn.commit()
-            print(colored('%s has been inserted into database, 优先级为%d' % (word, default_pr), 'green'))
-        finally:
+            self.__conn.commit()
+            print(colored('%s has been inserted into database, 优先级为%d' 
+                          % (word_dict["name"], word_dict["pr"]), 'green'))
             return True
         
     def count_word(self, condition):

@@ -35,11 +35,10 @@ class Displayer:
         self.__text_backcolor = 'on_white'
         self.__title_color = 'white'
         self.__title_backcolor = 'on_blue'
-        print("mode = %d" %(self.__mode))
+        #print("mode = %d" %(self.__mode))
 
-    def __del__(self):
+    #def __del__(self):
         #将配置写入文件中
-        print("mode=%d" % (self.__mode))
 
     def set_mode(self, mode):
         self.__mode = mode
