@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS Word
 (
 name            TEXT PRIMARY KEY NOT NULL,
 user_defined    TEXT,
+basic           TEXT,
 synonyms        TEXT,
 discriminate    TEXT,
 word_group      TEXT,
@@ -37,20 +38,24 @@ class Word_sql:
         curs.execute(CREATE_TABLE_WORD)
         self.__conn.commit()
 
+    def __del__(self):
+        self.__conn.close()
+
     # func word_dict_to_json
     # purpose: change list to json type, for saving
     # other: because of ’ can't exist, so change it to ASCII(%27)
     @staticmethod
     def word_dict_to_json(word_dict):
-        word_dict["synonyms"]       = json.dumps(word_dict["synonyms"])
-        word_dict["discriminate"]   = json.dumps(word_dict["discriminate"])
-        word_dict["word_group"]     = json.dumps(word_dict["word_group"])
-        word_dict["collins"]        = json.dumps(word_dict["collins"])
-        word_dict["bilingual"]      = json.dumps(word_dict["bilingual"])
-        word_dict["fanyiToggle"]    = json.dumps(word_dict["fanyiToggle"])
+        #word_dict["basic"]          = json.dumps(word_dict["basic"])
+        #word_dict["synonyms"]       = json.dumps(word_dict["synonyms"])
+        #word_dict["discriminate"]   = json.dumps(word_dict["discriminate"])
+        #word_dict["word_group"]     = json.dumps(word_dict["word_group"])
+        #word_dict["collins"]        = json.dumps(word_dict["collins"])
+        #word_dict["bilingual"]      = json.dumps(word_dict["bilingual"])
+        #word_dict["fanyiToggle"]    = json.dumps(word_dict["fanyiToggle"])
         for key, value in word_dict.items():
-            if isinstance(value, str):
-                word_dict[key] = re.sub('\'', '%27', value)
+            if isinstance(value, list) or isinstance(value, dict):
+                word_dict[key] = re.sub('\'', '%27', json.dumps(value))
 
     # func json_to_word_dict
     # purpose: change list to json type, for saving
@@ -60,21 +65,21 @@ class Word_sql:
     def json_to_word_dict(result):
         word_dict = {}
         word_dict["name"] = result[0]
-        word_dict["synonyms"]       = json.loads(re.sub("%27", "\'", result[1]))
-        word_dict["discriminate"]   = json.loads(re.sub("%27", "\'", result[2]))
-        word_dict["word_group"]     = json.loads(re.sub("%27", "\'", result[3]))
-        word_dict["collins"]        = json.loads(re.sub("%27", "\'", result[4]))
-        word_dict["bilingual"]      = json.loads(re.sub("%27", "\'", result[5]))
-        word_dict["fanyiToggle"]    = json.loads(re.sub("%27", "\'", result[6]))
-        word_dict["pr"] = result[7]
-    
+        word_dict["basic"]          = json.loads(re.sub("%27", "\'", result[1]))
+        word_dict["synonyms"]       = json.loads(re.sub("%27", "\'", result[2]))
+        word_dict["discriminate"]   = json.loads(re.sub("%27", "\'", result[3]))
+        word_dict["word_group"]     = json.loads(re.sub("%27", "\'", result[4]))
+        word_dict["collins"]        = json.loads(re.sub("%27", "\'", result[5]))
+        word_dict["bilingual"]      = json.loads(re.sub("%27", "\'", result[6]))
+        word_dict["fanyiToggle"]    = json.loads(re.sub("%27", "\'", result[7]))
+        word_dict["pr"] = result[8]
         return word_dict
 
     def select_word(self, condition):
         word_dict = {}
         word_dict_list = []
         curs = self.__conn.cursor()
-        curs.execute('SELECT name, synonyms, discriminate, word_group, collins,\
+        curs.execute('SELECT name, basic, synonyms, discriminate, word_group, collins,\
                      bilingual, fanyiToggle, pr FROM Word WHERE %s' % condition)
         res = curs.fetchall()
         if res:
@@ -113,10 +118,10 @@ class Word_sql:
         try:
             curs = self.__conn.cursor()
             self.word_dict_to_json(word_dict)
-            curs.execute('''insert into Word(name, synonyms, discriminate, word_group,
+            curs.execute('''insert into Word(name, basic, synonyms, discriminate, word_group,
                          collins, bilingual, fanyiToggle, pr, aset)
-                         values ('%s','%s','%s','%s','%s','%s','%s', %d, '%s')'''
-                         % ( word_dict["name"], word_dict["synonyms"], word_dict["discriminate"], 
+                         values ('%s','%s','%s','%s','%s','%s','%s','%s', %d, '%s')'''
+                         % ( word_dict["name"], word_dict["basic"], word_dict["synonyms"], word_dict["discriminate"], 
                             word_dict["word_group"], word_dict["collins"], word_dict["bilingual"], 
                             word_dict["fanyiToggle"], word_dict["pr"], word_dict["name"][0].upper()))
         except Exception as e:

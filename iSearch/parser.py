@@ -8,8 +8,8 @@ import re
 # func get_info
 # purpose: find div content by id, and call func to deal with it
 # return callback return  -> word part info list
-def get_info(soup, titleName, label, labelID, func):
-    result = soup.find(label, id = labelID)
+def get_info(soup, titleName, label, label_attr, func):
+    result = soup.find(label, attrs=label_attr)
     wlist = []
     if result:
         for s in result.descendants:
@@ -48,6 +48,11 @@ def deal_synonyms(wlist):
 
     if '' != tmp_text:
         synonyms_list.append(tmp_text)
+
+    print(synonyms_list)
+
+    for index in range(len(synonyms_list)):
+        synonyms_list[index] = re.sub('[\n]+', '\n', synonyms_list[index])
 
     return synonyms_list
 
@@ -138,10 +143,11 @@ class Parser:
         data = res.text
         soup = bs4.BeautifulSoup(data, 'html.parser')
         word_dict = {}
-        word_dict['synonyms'] = get_info(soup, '【词语解析与近义词】', 'div', 'synonyms', deal_synonyms)
-        word_dict['discriminate'] = get_info(soup, '【词语辨析】', 'div', 'discriminate', deal_discriminate)
-        word_dict['word_group'] = get_info(soup, '【词组】', 'div', 'wordGroup', deal_word_group)
-        word_dict['collins'] = get_info(soup, '【用例介绍】', 'div', 'collinsResult', deal_collins)
-        word_dict['bilingual'] = get_info(soup, '【双语例句】', 'div', 'bilingual', deal_bilingual)
-        word_dict['fanyiToggle'] = get_info(soup, '【有道翻译】', 'div', 'fanyiToggle', deal_fanyiToggle)
+        word_dict["basic"] = get_info(soup, '【含义】', 'div', {'class':'trans-container'}, deal_synonyms)
+        word_dict['synonyms'] = get_info(soup, '【词语解析与近义词】', 'div', {'id':'synonyms'}, deal_synonyms)
+        word_dict['discriminate'] = get_info(soup, '【词语辨析】', 'div', {'id':'discriminate'}, deal_discriminate)
+        word_dict['word_group'] = get_info(soup, '【词组】', 'div', {'id':'wordGroup'}, deal_word_group)
+        word_dict['collins'] = get_info(soup, '【用例介绍】', 'div', {'id':'collinsResult'}, deal_collins)
+        word_dict['bilingual'] = get_info(soup, '【双语例句】', 'div', {'id':'bilingual'}, deal_bilingual)
+        word_dict['fanyiToggle'] = get_info(soup, '【有道翻译】', 'div', {'id':'fanyiToggle'}, deal_fanyiToggle)
         return word_dict

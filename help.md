@@ -8,7 +8,7 @@ sudo apt install python-pip
 4. 能够支持数据库合并，能够将别人的数据库导入自己的，并且能够简单地添加删除。
 那么在表名上，可能需要做特殊处理了。
 5. 类封装，整理代码逻辑。
-    - displayer 细节部分
+    - 添加myLoggin类，封装logging模块，根据不同级别设置打印信息
 
 # 已完成修改
 2. 使用JSON格式进行存放
@@ -19,6 +19,7 @@ sudo apt install python-pip
 
 5. 类封装，整理代码逻辑。
     - parser
+    - displayer 细节部分
 
 # 模块划分和定义
 1. isearch 负责接受命令和处理业务流程

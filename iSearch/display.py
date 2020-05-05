@@ -5,7 +5,8 @@ import json
 from termcolor import colored
 
 type_to_chinese = {
-    "synonyms":"【词语解析与近义词】",
+    "basic":"【基本含义】",
+    "synonyms":"【同近义词】",
     "discriminate":"【词语辨析】",
     "word_group":"【词组】",
     "collins":"【用例介绍】",
@@ -61,6 +62,11 @@ class Displayer:
     def show(self, word_dict, mode=Display_mode.MIDDLE):
         if "name" in word_dict:
             self.show_core(word_dict["name"], self.__colored)
+
+        if "basic" in word_dict and word_dict["basic"]:
+            self.title_print(type_to_chinese["basic"])
+            for item in word_dict["basic"]:
+                self.show_core(item, self.__colored)
 
         if mode & Display_mode.NAME:
             return True

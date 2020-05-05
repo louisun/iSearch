@@ -23,7 +23,7 @@ DEFAULT_PATH = os.path.join(os.path.expanduser('~'), '.iSearch')
 def search_online(word, word_parser):
     '''search the word or phrase on http://dict.youdao.com.'''
 
-    url = 'http://dict.youdao.com/w/ %s' % word
+    url = 'http://dict.youdao.com/w/%s' % word
 
     word_dict = word_parser.get_text(url)
     word_dict["name"] = word
