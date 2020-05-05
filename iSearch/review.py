@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 import time
+import sys
 
 DAY_TO_SECOND = 24 * 3600
 
@@ -31,10 +32,10 @@ class Reviewer:
             begin_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(cur_time - interval_time))
             end_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(cur_time - interval_time + DAY_TO_SECOND))
             word_dict_list = word_sql.select_word("addtime between '%s' and '%s'" %(begin_time, end_time))
-            print("-----------%d day ago-----------" % (interval_time / DAY_TO_SECOND))
+            print("----%d day ago--review_num=%d----" % (interval_time / DAY_TO_SECOND, len(word_dict_list)))
             for word_dict in word_dict_list:
                 displayer.show(word_dict)
-                input_msg = '按任意键继续, 输入quit退出'
+                input_msg = '------------按任意键继续, 输入quit退出----------'
                 if sys.version_info[0] == 2:
                     msg = raw_input(input_msg)
                 else:
