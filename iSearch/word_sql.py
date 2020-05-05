@@ -87,12 +87,12 @@ class Word_sql:
     def delete_word(self, condition):
         try:
             curs = self.__conn.cursor()
-            curs.execute('DELETE FROM Word WHERE name = "%s"' % word)
+            curs.execute('DELETE FROM Word WHERE %s' % condition)
         except Exception as e:
             print(e)
             return False
         else:
-            print(colored('%s has been deleted from database' % word, 'green'))
+            print(colored('delete word where %s ' % condition, 'green'))
             self.__conn.commit()
             return True
 
