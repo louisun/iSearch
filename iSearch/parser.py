@@ -59,7 +59,7 @@ def deal_synonyms(wlist):
         if '.' in i:
             #下一个元素，保存当前元素
             if '' != tmp_text:
-                synonyms_list.append(tmp_text)
+                synonyms_list.append(re.sub(r'\s+', r'', tmp_text))
             #这里添加例子如下 adj. 温柔的；柔软的；脆弱的；幼稚的；难对付的
             tmp_text = i + '\n'
         else:
@@ -70,7 +70,7 @@ def deal_synonyms(wlist):
             tmp_text = tmp_text + i
 
     if '' != tmp_text:
-        synonyms_list.append(tmp_text)
+        synonyms_list.append(re.sub(r'\s+', r'', tmp_text))
 
     for index in range(len(synonyms_list)):
         synonyms_list[index] = re.sub(r'(\n\s+)', r'\n', synonyms_list[index])
