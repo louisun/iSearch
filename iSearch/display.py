@@ -5,6 +5,7 @@ import json
 from termcolor import colored
 
 type_to_chinese = {
+    "voice":"【发音】",
     "basic":"【基本含义】",
     "synonyms":"【同近义词】",
     "discriminate":"【词语辨析】",
@@ -62,6 +63,11 @@ class Displayer:
     def show(self, word_dict, mode=Display_mode.MIDDLE):
         if "name" in word_dict:
             self.show_core(word_dict["name"], self.__colored)
+
+        if "voice" in word_dict and word_dict["voice"]:
+            self.title_print(type_to_chinese["voice"])
+            for item in word_dict["voice"]:
+                self.show_core(item, self.__colored)
 
         if "basic" in word_dict and word_dict["basic"]:
             self.title_print(type_to_chinese["basic"])

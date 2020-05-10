@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS Word
 (
 name            TEXT PRIMARY KEY NOT NULL,
 user_defined    TEXT,
+voice           TEXT,
 basic           TEXT,
 synonyms        TEXT,
 discriminate    TEXT,
@@ -25,6 +26,9 @@ aset            CHAR[1],
 addtime         TIMESTAMP NOT NULL DEFAULT (DATETIME('NOW', 'LOCALTIME'))
 )
 '''
+
+ORDER_ARR = ["name", "voice", "basic", "synonyms", "discriminate",
+             "word_group", "collins", "bilingual", "fanyiToggle", "pr"]
 
 class Word_sql:
     def __init__(self):
@@ -46,13 +50,6 @@ class Word_sql:
     # other: because of ’ can't exist, so change it to ASCII(%27)
     @staticmethod
     def word_dict_to_json(word_dict):
-        #word_dict["basic"]          = json.dumps(word_dict["basic"])
-        #word_dict["synonyms"]       = json.dumps(word_dict["synonyms"])
-        #word_dict["discriminate"]   = json.dumps(word_dict["discriminate"])
-        #word_dict["word_group"]     = json.dumps(word_dict["word_group"])
-        #word_dict["collins"]        = json.dumps(word_dict["collins"])
-        #word_dict["bilingual"]      = json.dumps(word_dict["bilingual"])
-        #word_dict["fanyiToggle"]    = json.dumps(word_dict["fanyiToggle"])
         for key, value in word_dict.items():
             if isinstance(value, list) or isinstance(value, dict):
                 word_dict[key] = re.sub('\'', '%27', json.dumps(value))
@@ -64,30 +61,17 @@ class Word_sql:
     @staticmethod
     def json_to_word_dict(result):
         word_dict = {}
-        word_dict["name"] = result[0]
-        word_dict["basic"]          = json.loads(re.sub("%27", "\'", result[1]))
-        word_dict["synonyms"]       = json.loads(re.sub("%27", "\'", result[2]))
-        word_dict["discriminate"]   = json.loads(re.sub("%27", "\'", result[3]))
-        word_dict["word_group"]     = json.loads(re.sub("%27", "\'", result[4]))
-        word_dict["collins"]        = json.loads(re.sub("%27", "\'", result[5]))
-        word_dict["bilingual"]      = json.loads(re.sub("%27", "\'", result[6]))
-        word_dict["fanyiToggle"]    = json.loads(re.sub("%27", "\'", result[7]))
-        word_dict["pr"] = result[8]
-        return word_dict
+        for index in range(len(ORDER_ARR)):
+            if 0 == index:
+                # word name
+                word_dict[ORDER_ARR[index]] = result[index]
+            elif 9 == index:
+                # priority
+                word_dict[ORDER_ARR[index]] = result[index]
+            else:
+                word_dict[ORDER_ARR[index]] = json.loads(re.sub("%27", "\'", result[index]))
 
-    def select_word(self, condition):
-        word_dict = {}
-        word_dict_list = []
-        curs = self.__conn.cursor()
-        curs.execute('SELECT name, basic, synonyms, discriminate, word_group, collins,\
-                     bilingual, fanyiToggle, pr FROM Word WHERE %s' % condition)
-        res = curs.fetchall()
-        if res:
-            for result in res:
-                word_dict = self.json_to_word_dict(result)
-                word_dict_list.append(word_dict)
-        
-        return word_dict_list
+        return word_dict
 
     def delete_word(self, condition):
         try:
@@ -114,16 +98,37 @@ class Word_sql:
             print("set %s success" % set_part)
             return True
 
+    def select_word(self, condition):
+        word_dict = {}
+        word_dict_list = []
+        curs = self.__conn.cursor()
+        split = ","
+        select_str = split.join(ORDER_ARR)
+        curs.execute('SELECT %s FROM Word WHERE %s' % (select_str,condition))
+        res = curs.fetchall()
+        if res:
+            for result in res:
+                word_dict = self.json_to_word_dict(result)
+                word_dict_list.append(word_dict)
+        
+        return word_dict_list
+
     def insert_word(self, word_dict):
         try:
             curs = self.__conn.cursor()
             self.word_dict_to_json(word_dict)
-            curs.execute('''insert into Word(name, basic, synonyms, discriminate, word_group,
-                         collins, bilingual, fanyiToggle, pr, aset)
-                         values ('%s','%s','%s','%s','%s','%s','%s','%s', %d, '%s')'''
-                         % ( word_dict["name"], word_dict["basic"], word_dict["synonyms"], word_dict["discriminate"], 
-                            word_dict["word_group"], word_dict["collins"], word_dict["bilingual"], 
-                            word_dict["fanyiToggle"], word_dict["pr"], word_dict["name"][0].upper()))
+            split = ","
+            insert_str = split.join(ORDER_ARR)
+            for index in range(len(ORDER_ARR)):
+                if 0 == index:
+                    value_str = "'%s'" % word_dict[ORDER_ARR[index]]
+                    #print(value_str)
+                else:
+                    value_str = "%s,'%s'" % (value_str,word_dict[ORDER_ARR[index]]) 
+                    #print(value_str)
+            curs.execute('''insert into Word(%s,aset)
+                         values (%s, '%s')'''
+                         % ( insert_str, value_str, word_dict["name"][0].upper()))
         except Exception as e:
             print(colored('something\'s wrong, you can\'t add the word', 'white', 'on_red'))
             print(e)
