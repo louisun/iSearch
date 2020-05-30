@@ -88,9 +88,8 @@ def add_word_self(word, word_dict, word_sql, word_parser, default_pr):
     else:
         word_basic = input(input_msg)
 
-    if add_word(word, word_dict, word_sql, default_pr):
-        word_sql.update_word("user_defined='%s', pr=%d" % (word_basic, default_pr), 
-                                "name='%s'" % (word))
+    word_dict["user_defined"] = word_basic
+    add_word(word, word_dict, word_sql, default_pr)
 
 def add_word(word, word_dict, word_sql, default_pr):
     '''add the word or phrase to database.'''

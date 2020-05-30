@@ -124,6 +124,9 @@ class Word_sql:
                     value_str = "'%s'" % word_dict[ORDER_ARR[index]]
                     #print(value_str)
                 else:
+                    # 如果有元素不存在于字典中，那么加入一个空值,避免报错
+                    if ORDER_ARR[index] not in word_dict:
+                        word_dict[ORDER_ARR[index]] = ""
                     value_str = "%s,'%s'" % (value_str,word_dict[ORDER_ARR[index]]) 
                     #print(value_str)
             curs.execute('''insert into Word(%s,aset)
