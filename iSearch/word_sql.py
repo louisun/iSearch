@@ -27,8 +27,10 @@ addtime         TIMESTAMP NOT NULL DEFAULT (DATETIME('NOW', 'LOCALTIME'))
 )
 '''
 
-ORDER_ARR = ["name", "voice", "basic", "synonyms", "discriminate",
+ORDER_ARR = ["name", "user_defined" ,"voice", "basic", "synonyms", "discriminate",
              "word_group", "collins", "bilingual", "fanyiToggle", "pr"]
+# 没有通过json串存放的元素的下标
+exception_arr = [0, 1, 10]
 
 class Word_sql:
     def __init__(self):
@@ -62,14 +64,12 @@ class Word_sql:
     def json_to_word_dict(result):
         word_dict = {}
         for index in range(len(ORDER_ARR)):
-            if 0 == index:
+            if index in exception_arr:
                 # word name
                 word_dict[ORDER_ARR[index]] = result[index]
-            elif 9 == index:
-                # priority
-                word_dict[ORDER_ARR[index]] = result[index]
             else:
-                word_dict[ORDER_ARR[index]] = json.loads(re.sub("%27", "\'", result[index]))
+                if result[index]:
+                    word_dict[ORDER_ARR[index]] = json.loads(re.sub("%27", "\'", result[index]))
 
         return word_dict
 

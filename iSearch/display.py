@@ -6,6 +6,7 @@ from termcolor import colored
 
 type_to_chinese = {
     "voice":"【发音】",
+    "user_defined":"【自定义】",
     "basic":"【基本含义】",
     "synonyms":"【同近义词】",
     "discriminate":"【词语辨析】",
@@ -63,6 +64,10 @@ class Displayer:
     def show(self, word_dict, mode=Display_mode.MIDDLE):
         if "name" in word_dict:
             self.show_core(word_dict["name"], self.__colored)
+
+        if "user_defined" in word_dict and word_dict["user_defined"]:
+            self.title_print(type_to_chinese["user_defined"])
+            self.show_core(word_dict["user_defined"], self.__colored)
 
         if "voice" in word_dict and word_dict["voice"]:
             self.title_print(type_to_chinese["voice"])
