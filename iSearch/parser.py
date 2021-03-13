@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-import requests
-import bs4
-import re
+import requests, bs4, re, logging
+logger = logging.getLogger("isearch.parser")
 
 # func get_info
 # purpose: find div content by id, and call func to deal with it
@@ -165,6 +164,10 @@ class Parser:
         soup = bs4.BeautifulSoup(data, 'html.parser')
         word_dict = {}
         word_dict["basic"]          = get_info(soup, 'div', {'class':'trans-container'}, deal_basic)
+        if not word_dict["basic"]:
+            word_dict = None
+            return None
+
         word_dict["voice"]          = get_info(soup, 'div', {'class':'baav'}, deal_synonyms)
         word_dict['synonyms']       = get_info(soup, 'div', {'id':'synonyms'}, deal_synonyms)
         word_dict['discriminate']   = get_info(soup, 'div', {'id':'discriminate'}, deal_discriminate)

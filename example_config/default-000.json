@@ -1,0 +1,19 @@
+{
+    "default":{
+        "priority":5
+    },
+    "review":{
+        "day":[1,3,7]
+    },
+    "display":{
+        "type":"short",
+        "text":{
+            "color":"blue",
+            "backcolor":"on_white"
+        },
+        "title":{
+            "color":"white",
+            "backcolor":"on_blue"
+        }
+    }
+}

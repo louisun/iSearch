@@ -1,23 +1,20 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals
-import sys
-import argparse
-import os
-import sqlite3
-from display import Displayer, Display_mode
 from termcolor import colored
-from parser import Parser
-from review import Reviewer
-from word_sql import Word_sql
-
-# Python2 compatibility
-if sys.version_info[0] == 2:
-    reload(sys)
-    sys.setdefaultencoding('utf-8')
+import sys, argparse, os, sqlite3, json, logging, logging.config
+from .display import Displayer, Display_mode
+from .parser import Parser
+from .review import Reviewer
+from .word_sql import Word_sql
+from .search_config import iSearchConfig
 
 # Default database path is ~/.iSearch.
+logger = logging.getLogger("isearch")
 ISCOLORED = 1
 DEFAULT_PATH = os.path.join(os.path.expanduser('~'), '.iSearch')
+
+def set_word_info(config):
+    return True
 
 
 def search_online(word, word_parser):
@@ -26,67 +23,65 @@ def search_online(word, word_parser):
     url = 'http://dict.youdao.com/w/%s' % word
 
     word_dict = word_parser.get_text(url)
-    word_dict["name"] = word
+    if word_dict:
+        word_dict["name"] = word
+
     return word_dict
 
-def search_database(word, word_sql, displayer):
-    '''offline search.'''
-    #模糊查询
-    if '#' in word:
-        word_dict_list = word_sql.select_word('name LIKE "%%%s%%"' % (word))
-        if word_dict_list:
-            for word_dict in word_dict_list:
-                displayer.show(word_dict, Display_mode.NAME)
-        else:
-            # 这里需要加个是否需要网络查询的判断
-            return False
-    #具体查询
-    else:
-        word_dict_list = word_sql.select_word('name LIKE "%s"' % word)
-        if word_dict_list:
-            print(colored(word + ' 在数据库中存在', 'white', 'on_green'))
-            for word_dict in word_dict_list:
-                print(colored('★ ' * word_dict["pr"], 'red'), colored('☆ ' * (5 - word_dict["pr"]), 'yellow'), sep='')
-                displayer.show(word_dict)
-        else:
-            return False
-
-    return True
+'''
+purpose : offline search
+param[in] word 单词
+param[in] word_sql 数据库句柄
+param[in] displayer 显示控制句柄
+return  : 
+'''
+def search_database(word, word_sql):
+    if '#' in word:             #模糊查询
+        return word_sql.select_word('name LIKE "%%%s%%"' % (word))
+    else:                       #具体查询
+        return word_sql.select_word('name LIKE "%s"' % word)
     
+# purpose: 逻辑控制，管理查询单词逻辑，调用对应接口
+# return : 成功 返回相关单词列表
+#        ：失败 返回None
+def search_word(word, word_parser, word_sql, displayer, search_config):
+    logger.debug("search word[%s]" %  word)
+    wordList = search_database(word, word_sql)
+    if wordList:
+        logger.debug("在本地数据库中检索到 word(%s)" % word)
+        for wordInfo in wordList:
+            displayer.show(wordInfo)
+        return True
 
-def search_word(word, word_parser, word_sql, displayer):
-    flag = search_database(word, word_sql, displayer)
-    if False == flag:
-        print(colored(word + '提示: 不在本地，从有道词典查询', 'green', 'on_grey'))
-        word_dict = search_online(word, word_parser)
-        displayer.show(word_dict)
+    logger.info('[%s]不在本地，从有道词典查询' % (word))
 
-        input_msg = '请输入,放弃保存0，优先级(1~5)(默认为3)，6自定义\n>>> '
-        if sys.version_info[0] == 2:
-            add_in_db_pr = raw_input(input_msg)
-        else:
-            add_in_db_pr = input(input_msg)
+    wordInfo = search_online(word, word_parser)
+    if not wordInfo:
+        print(colored(" can't find word[%s], please check it" % (word)))
+        return False
 
-        if add_in_db_pr and add_in_db_pr.isdigit():
-            if int(add_in_db_pr) >= 1 and int(add_in_db_pr) <= 5:
-                add_word(word, word_dict, word_sql, int(add_in_db_pr))
-            elif 0 == int(add_in_db_pr):
-                print("won't insert %s into database" %(word))
-            elif 6 == int(add_in_db_pr):
-                add_word_self(word, word_dict, word_sql, word_parser, 6)
+    displayer.show(wordInfo)
 
-        else:
-            add_word(word, word_dict, word_sql, 3)
+    priority = search_config.get_default_config("priority")
+    if not priority:
+        input_msg = '请输入优先级(大于0的数字) >>> '
+        priority = input(input_msg)
+        try:
+            priority = int(priority)
+        except valueError as e:
+            logger.error(e)
+            logger.error("解析失败，请输入数字")
+            return False
+
+    add_word(word, wordInfo, word_sql, priority)
+    
+    return True
 
 
 def add_word_self(word, word_dict, word_sql, word_parser, default_pr):
     '''add the word or phrase to database.'''
     input_msg = "please input word meaning\n"
-    update_flag = 0
-    if sys.version_info[0] == 2:
-        word_basic = raw_input(input_msg)
-    else:
-        word_basic = input(input_msg)
+    word_basic = input(input_msg)
 
     word_dict["user_defined"] = word_basic
     add_word(word, word_dict, word_sql, default_pr)
@@ -156,17 +151,6 @@ def list_latest(limit, word_sql, displayer, card=False, vb=False, output=False):
     for word_dict in word_dict_list:
         displayer.show(word_dict)
 
-
-def list_review(word_sql, displayer, reviewer, is_card, is_output):
-    reviewer.add_interval_day(1)
-    reviewer.add_interval_day(3)
-    reviewer.add_interval_day(7)
-    
-    return reviewer.get_words(word_sql, displayer)
-
-
-
-
 def super_insert(input_file_path, word_parser):
     log_file_path = os.path.join(DEFAULT_PATH, 'log.txt')
     baseurl = 'http://dict.youdao.com/w/'
@@ -199,47 +183,56 @@ def super_insert(input_file_path, word_parser):
 
 
 def register_argument(parser):
-    parser.add_argument(dest='word', help='the word you want to search.', nargs='*')
+    parser.add_argument(dest='word', help='需要查询的单词', nargs='*')
 
     parser.add_argument('-a', '--add', dest='add',
-                        action='store', nargs='+', help='insert word into database.')
+            action='store', nargs='+', help='手动将单词插入数据库')
 
     parser.add_argument('-d', '--delete', dest='delete',
-                        action='store', nargs='+', help='delete word from database.')
+            action='store', nargs='+', help='从数据库中删除单词')
 
+    # 需要替换到配置中，不要用户手动输入
     parser.add_argument('-c', '--card', dest='card',
-                        action='store_true', help='card mode.')
+            action='store_true', help='card mode.')
+    
+    # -d debug模式, 待添加
 
     parser.add_argument('-f', '--file', dest='file',
-                        action='store', help='add words list from text file.')
+            action='store', help='从文件中导入单词列表')
 
+    # 需要修改
+    # 1. 不断读取用户输入
     parser.add_argument('-s', '--set', dest='set',
-                        action='store', help='set priority.')
+            action='store', help='设置单词属性')
 
     parser.add_argument('-v', '--verbose', dest='verbose',
                         action='store_true', help='verbose mode.')
 
     parser.add_argument('-o', '--output', dest='output',
                         action='store_true', help='output mode.')
-
+    
     parser.add_argument('-p', '--priority', dest='priority',
-                        action='store', help='list words by priority.')
+            action='store', help='按优先级列出单词表')
 
     parser.add_argument('-r', '--review', dest='review',
-                        action='store_true', help='review words by time class')
+            action='store_true', help='复习单词')
 
     parser.add_argument('-t', '--time', dest='time',
-                        action='store', help='list words by time.')
+            action='store', help='列出最近查找的单词')
 
 
 
 def main():
+    with open("config/logging.json", "r") as fr:
+        if not os.path.isdir("log"):
+            os.makedirs("log")
+        logging.config.dictConfig(json.loads(fr.read()))
+
+    search_config = iSearchConfig(DEFAULT_PATH + "/user_config.json")
     # 显示模式设置
-    displayer = Displayer()
+    displayer = Displayer(search_config.get_display_config())
     # 设置解析模式
     word_parser = Parser()
-    # 设置复习模式
-    reviewer = Reviewer()
     # 数据库连接
     word_sql = Word_sql()
 
@@ -257,9 +250,8 @@ def main():
     #应该能支持不同显示版本
 
     if args.add:
-        #这个用于导入批量单词，基本还是用查询
-        default_pr = 1 if not args.set else int(args.set)
-        #add_word(' '.join(args.add), None, default_pr)
+        # 用户自定义
+        set_word_info()
 
     elif args.delete:
         delete_word(' '.join(args.delete), word_sql)
@@ -280,8 +272,8 @@ def main():
         list_latest(limit, word_sql, displayer, is_card, is_verbose, is_output)
 
     elif args.review:
-        list_review(word_sql, displayer, reviewer, is_card, is_output)
-
+        reviewer = Reviewer(search_config)
+        reviewer.review(word_sql, displayer)
 
     elif args.priority:
         list_priority(args.priority, word_sql, displayer, is_verbose, is_output)
@@ -297,7 +289,9 @@ def main():
 
     elif args.word:
         word = ' '.join(args.word)
-        search_word(word, word_parser, word_sql, displayer)
+        search_word(word, word_parser, word_sql, displayer, search_config)
+    
+    return True
 
 
 if __name__ == '__main__':

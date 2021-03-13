@@ -6,25 +6,18 @@ import sys
 DAY_TO_SECOND = 24 * 3600
 
 class Reviewer:
-    def __init__(self):
+    def __init__(self, config):
         print("init reviewer")
-        self.__interval_times = []
+        self.__interval_times = self.day2time(config["review"]["day"])
+    
+    # 将间隔日期转化为时间
+    def day2time(dayList):
+        ret = []
+        for day in dayList:
+            ret.append(day * DAY_TO_SECOND)
+        return ret
 
-    # interval_time单位为s
-    def add_interval_time(self, interval_time):
-        self.__interval_times.append(interval_time)
-
-    def del_interval_time(self, interval_time):
-        self.__interval_times.remove(interval_time)
-
-    # interval_time单位为day
-    def add_interval_day(self, interval_day):
-        self.__interval_times.append(interval_day * DAY_TO_SECOND)
-
-    def del_interval_day(self, interval_day):
-        self.__interval_times.remove(interval_day * DAY_TO_SECOND)
-
-    def get_words(self, word_sql, displayer):
+    def review(self, word_sql, displayer):
         word_dict_list = []
         for interval_time in self.__interval_times:
             words = []
@@ -36,14 +29,9 @@ class Reviewer:
             for word_dict in word_dict_list:
                 displayer.show(word_dict)
                 input_msg = '------------按任意键继续, 输入quit退出----------'
-                if sys.version_info[0] == 2:
-                    msg = raw_input(input_msg)
-                else:
-                    msg = input(input_msg)
-
-                if "quit" == msg:
+                msg = input(input_msg)
+                if "quit" == msg or "q" == msg:
                     break
-
 
         return True
 
