@@ -9,6 +9,7 @@ from termcolor import colored
 from parser import Parser
 from review import Reviewer
 from word_sql import Word_sql
+from config import getConfig, SKIP_SAVE_DB_CONFIRM_MESSAGE, DEFAULT_SAVE_DB_LEVEL
 
 # Python2 compatibility
 if sys.version_info[0] == 2:
@@ -54,18 +55,24 @@ def search_database(word, word_sql, displayer):
     return True
     
 
-def search_word(word, word_parser, word_sql, displayer):
+def search_word(word, word_parser, word_sql, displayer, config):
     flag = search_database(word, word_sql, displayer)
     if False == flag:
         print(colored(word + '提示: 不在本地，从有道词典查询', 'green', 'on_grey'))
         word_dict = search_online(word, word_parser)
         displayer.show(word_dict)
 
-        input_msg = '请输入,放弃保存0，优先级(1~5)(默认为3)，6自定义\n>>> '
-        if sys.version_info[0] == 2:
-            add_in_db_pr = raw_input(input_msg)
-        else:
-            add_in_db_pr = input(input_msg)
+        if config[DEFAULT_SAVE_DB_LEVEL] == 0:
+            return
+        
+        if config[SKIP_SAVE_DB_CONFIRM_MESSAGE] == True:
+            add_in_db_pr = config[DEFAULT_SAVE_DB_LEVEL]
+        else:                
+            input_msg = '请输入,放弃保存0，优先级(1~5)(默认为3)，6自定义\n>>> '
+            if sys.version_info[0] == 2:
+                add_in_db_pr = raw_input(input_msg)
+            else:
+                add_in_db_pr = input(input_msg)
 
         if add_in_db_pr and add_in_db_pr.isdigit():
             if int(add_in_db_pr) >= 1 and int(add_in_db_pr) <= 5:
@@ -298,7 +305,8 @@ def main():
 
     elif args.word:
         word = ' '.join(args.word)
-        search_word(word, word_parser, word_sql, displayer)
+        config = getConfig()
+        search_word(word, word_parser, word_sql, displayer, config)
 
 
 if __name__ == '__main__':
