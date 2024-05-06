@@ -4,12 +4,12 @@ import sys
 import argparse
 import os
 import sqlite3
-from display import Displayer, Display_mode
 from termcolor import colored
-from parser import Parser
-from review import Reviewer
-from word_sql import Word_sql
-from config import getConfig, SKIP_SAVE_DB_CONFIRM_MESSAGE, DEFAULT_SAVE_DB_LEVEL
+from iSearch.display import Displayer, Display_mode
+from iSearch.parser import Parser
+from iSearch.review import Reviewer
+from iSearch.word_sql import Word_sql
+from iSearch.config import getConfig, SKIP_SAVE_DB_CONFIRM_MESSAGE, DEFAULT_SAVE_DB_LEVEL
 
 # Python2 compatibility
 if sys.version_info[0] == 2:
