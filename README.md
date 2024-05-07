@@ -7,7 +7,7 @@
 - v1.0.0 [#9b5bd2b](https://github.com/candywater/iSearch/commit/9b5bd2b477a57a65da749ace015b09ba1adc6908) 兼容 Python2、Python3 
 - v1.0.2 [#4ffdeee](https://github.com/candywater/iSearch/commit/4ffdeee88533adf34209113cc8ad1de48e94e62a) 优化查询流程：查询后会自动提示是否存入本地 
 - v1.0.2 with readme [#06013d6](https://github.com/candywater/iSearch/commit/06013d610338397f8cdd69f330b43e1ee8d29f1b)
-- v1.0.4 [#bc6c27c](https://github.com/candywater/iSearch/commit/bc6c27c666e465b0fdfde8def79f9811bf943101) 追加config file功能
+- v1.0.4 [#af232b8](https://github.com/candywater/iSearch/commit/af232b8ef5db114c3df35c2fc6ed113f222371de) 追加config file功能
 
 ---
 
