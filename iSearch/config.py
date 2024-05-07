@@ -1,10 +1,10 @@
 import os
 
-SKIP_SAVE_DB_CONFIRM_MESSAGE = "skipSaveDbConfirmMessage"
-DEFAULT_SAVE_DB_LEVEL = "defaultSaveDbLevel"
+SHOW_SAVE_DB_CONFIRM_MESSAGE = "SHOW_SAVE_DB_CONFIRM_MESSAGE"
+DEFAULT_SAVE_DB_LEVEL = "DEFAULT_SAVE_DB_LEVEL"
 
 DEFAULT_CONFIG = {
-    SKIP_SAVE_DB_CONFIRM_MESSAGE : False,
+    SHOW_SAVE_DB_CONFIRM_MESSAGE : False,
     DEFAULT_SAVE_DB_LEVEL: "3"
 }
 
@@ -38,8 +38,8 @@ def parseConfigFile(configFile):
                 value = False
             config[key] = value
     
-    if SKIP_SAVE_DB_CONFIRM_MESSAGE not in config:
-        config[SKIP_SAVE_DB_CONFIRM_MESSAGE] = DEFAULT_CONFIG[SKIP_SAVE_DB_CONFIRM_MESSAGE]
+    if SHOW_SAVE_DB_CONFIRM_MESSAGE not in config:
+        config[SHOW_SAVE_DB_CONFIRM_MESSAGE] = DEFAULT_CONFIG[SHOW_SAVE_DB_CONFIRM_MESSAGE]
     if DEFAULT_SAVE_DB_LEVEL not in config:
         config[DEFAULT_SAVE_DB_LEVEL] = DEFAULT_CONFIG[DEFAULT_SAVE_DB_LEVEL]
     return config

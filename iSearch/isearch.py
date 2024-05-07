@@ -3,13 +3,12 @@ from __future__ import print_function, unicode_literals
 import sys
 import argparse
 import os
+import re
 import sqlite3
+import requests
+import bs4
 from termcolor import colored
-from iSearch.display import Displayer, Display_mode
-from iSearch.parser import Parser
-from iSearch.review import Reviewer
-from iSearch.word_sql import Word_sql
-from iSearch.config import getConfig, SKIP_SAVE_DB_CONFIRM_MESSAGE, DEFAULT_SAVE_DB_LEVEL
+from iSearch.config import getConfig, SHOW_SAVE_DB_CONFIRM_MESSAGE, DEFAULT_SAVE_DB_LEVEL
 
 # Python2 compatibility
 if sys.version_info[0] == 2:
@@ -17,165 +16,429 @@ if sys.version_info[0] == 2:
     sys.setdefaultencoding('utf-8')
 
 # Default database path is ~/.iSearch.
-ISCOLORED = 1
 DEFAULT_PATH = os.path.join(os.path.expanduser('~'), '.iSearch')
 
+CREATE_TABLE_WORD = '''
+CREATE TABLE IF NOT EXISTS Word
+(
+name     TEXT PRIMARY KEY,
+expl     TEXT,
+pr       INT DEFAULT 1,
+aset     CHAR[1],
+addtime  TIMESTAMP NOT NULL DEFAULT (DATETIME('NOW', 'LOCALTIME'))
+)
+'''
 
-def search_online(word, word_parser):
+
+def get_text(url):
+    my_headers = {
+        'Accept': 'text/html, application/xhtml+xml, application/xml;q=0.9, image/webp, */*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, sdch',
+        'Accept-Language': 'zh-CN, zh;q=0.8',
+        'Upgrade-Insecure-Requests': '1',
+        'Host': 'dict.youdao.com',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) \
+                       Chrome/48.0.2564.116 Safari/537.36'
+    }
+    res = requests.get(url, headers=my_headers)
+    data = res.text
+    soup = bs4.BeautifulSoup(data, 'html.parser')
+    expl = ''
+
+    # -----------------collins-----------------------
+
+    collins = soup.find('div', id="collinsResult")
+    ls1 = []
+    if collins:
+        for s in collins.descendants:
+            if isinstance(s, bs4.element.NavigableString):
+                if s.strip():
+                    ls1.append(s.strip())
+
+        if ls1[1].startswith('('):
+            # Phrase
+            expl = expl + ls1[0] + '\n'
+            line = ' '.join(ls1[2:])
+        else:
+            expl = expl + (' '.join(ls1[:2])) + '\n'
+            line = ' '.join(ls1[3:])
+        text1 = re.sub('例：', '\n\n例：', line)
+        text1 = re.sub(r'(\d+\. )', r'\n\n\1', text1)
+        text1 = re.sub(r'(\s+?→\s+)', r'  →  ', text1)
+        text1 = re.sub('(\")', '\'', text1)
+        text1 = re.sub('\s{10}\s+', '', text1)
+        expl += text1
+
+    # -----------------word_group--------------------
+
+    word_group = soup.find('div', id='word_group')
+    ls2 = []
+    if word_group:
+        for s in word_group.descendants:
+            if isinstance(s, bs4.element.NavigableString):
+                if s.strip():
+                    ls2.append(s.strip())
+        text2 = ''
+        expl = expl + '\n\n' + '【词组】\n\n'
+        if len(ls2) < 3:
+            text2 = text2 + ls2[0] + ' ' + ls2[1] + '\n'
+        else:
+            for i, x in enumerate(ls2[:-3]):
+                if i % 2:
+                    text2 = text2 + x + '\n'
+                else:
+                    text2 = text2 + x + ' '
+        text2 = re.sub('(\")', '\'', text2)
+        expl += text2
+
+    # ------------------synonyms---------------------
+
+    synonyms = soup.find('div', id='synonyms')
+    ls3 = []
+    if synonyms:
+        for s in synonyms.descendants:
+            if isinstance(s, bs4.element.NavigableString):
+                if s.strip():
+                    ls3.append(s.strip())
+        text3 = ''
+        tmp_flag = True
+        for i in ls3:
+            if '.' in i:
+                if tmp_flag:
+                    tmp_flag = False
+                    text3 = text3 + '\n' + i + '\n'
+                else:
+                    text3 = text3 + '\n\n' + i + '\n'
+            else:
+                text3 = text3 + i
+
+        text3 = re.sub('(\")', '\'', text3)
+        expl = expl + '\n\n' + '【同近义词】\n'
+        expl += text3
+
+    # ------------------discriminate------------------
+
+    discriminate = soup.find('div', id='discriminate')
+    ls4 = []
+    if discriminate:
+        for s in discriminate.descendants:
+            if isinstance(s, bs4.element.NavigableString):
+                if s.strip():
+                    ls4.append(s.strip())
+
+        expl = expl + '\n\n' + '【词语辨析】\n\n'
+        text4 = '-' * 40 + '\n' + format('↓ ' + ls4[0] + ' 的辨析 ↓', '^40s') + '\n' + '-' * 40 + '\n\n'
+
+        for x in ls4[1:]:
+            if x in '以上来源于':
+                break
+            if re.match(r'^[a-zA-Z]+$', x):
+                text4 = text4 + x + ' >> '
+            else:
+                text4 = text4 + x + '\n\n'
+
+        text4 = re.sub('(\")', '\'', text4)
+        expl += text4
+
+    # ------------------else------------------
+
+    # If no text found, then get other information
+
+    examples = soup.find('div', id='bilingual')
+
+    ls5 = []
+
+    if examples:
+        for s in examples.descendants:
+            if isinstance(s, bs4.element.NavigableString):
+                if s.strip():
+                    ls5.append(s.strip())
+
+        text5 = '\n\n【双语例句】\n\n'
+        pt = re.compile(r'.*?\..*?\..*?|《.*》')
+
+        for word in ls5:
+            if not pt.match(word):
+                if word.endswith(('（', '。', '？', '！', '。”', '）')):
+                    text5 = text5 + word + '\n\n'
+                    continue
+
+                if u'\u4e00' <= word[0] <= u'\u9fa5':
+                    if word != '更多双语例句':
+                        text5 += word
+                else:
+                    text5 = text5 + ' ' + word
+        text5 = re.sub('(\")', '\'', text5)
+        expl += text5
+
+    return expl
+
+
+def colorful_print(raw):
+    '''print colorful text in terminal.'''
+
+    lines = raw.split('\n')
+    colorful = True
+    detail = False
+    for line in lines:
+        if line:
+            if colorful:
+                colorful = False
+                print(colored(line, 'white', 'on_green') + '\n')
+                continue
+            elif line.startswith('例'):
+                print(line + '\n')
+                continue
+            elif line.startswith('【'):
+                print(colored(line, 'white', 'on_green') + '\n')
+                detail = True
+                continue
+
+            if not detail:
+                print(colored(line + '\n', 'yellow'))
+            else:
+                print(colored(line, 'cyan') + '\n')
+
+
+def normal_print(raw):
+    ''' no colorful text, for output.'''
+    lines = raw.split('\n')
+    for line in lines:
+        if line:
+            print(line + '\n')
+
+
+def search_online(word, printer=True):
     '''search the word or phrase on http://dict.youdao.com.'''
 
-    url = 'http://dict.youdao.com/w/%s' % word
+    url = 'http://dict.youdao.com/w/ %s' % word
 
-    word_dict = word_parser.get_text(url)
-    word_dict["name"] = word
-    return word_dict
+    expl = get_text(url)
 
-def search_database(word, word_sql, displayer):
+    if printer:
+        colorful_print(expl)
+    return expl
+
+
+def search_database(word, config):
     '''offline search.'''
-    #模糊查询
-    if '#' in word:
-        word_dict_list = word_sql.select_word('name LIKE "%%%s%%"' % (word))
-        if word_dict_list:
-            for word_dict in word_dict_list:
-                displayer.show(word_dict, Display_mode.NAME)
-        else:
-            # 这里需要加个是否需要网络查询的判断
-            return False
-    #具体查询
+
+    conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
+    curs = conn.cursor()
+    curs.execute(r'SELECT expl, pr FROM Word WHERE name LIKE "%s%%"' % word)
+    res = curs.fetchall()
+    if res:
+        print(colored(word + ' 在数据库中存在', 'white', 'on_green'))
+        print()
+        print(colored('★ ' * res[0][1], 'red'), colored('☆ ' * (5 - res[0][1]), 'yellow'), sep='')
+        colorful_print(res[0][0])
     else:
-        word_dict_list = word_sql.select_word('name LIKE "%s"' % word)
-        if word_dict_list:
-            print(colored(word + ' 在数据库中存在', 'white', 'on_green'))
-            for word_dict in word_dict_list:
-                print(colored('★ ' * word_dict["pr"], 'red'), colored('☆ ' * (5 - word_dict["pr"]), 'yellow'), sep='')
-                displayer.show(word_dict)
-        else:
-            return False
-
-    return True
-    
-
-def search_word(word, word_parser, word_sql, displayer, config):
-    flag = search_database(word, word_sql, displayer)
-    if False == flag:
-        print(colored(word + '提示: 不在本地，从有道词典查询', 'green', 'on_grey'))
-        word_dict = search_online(word, word_parser)
-        displayer.show(word_dict)
-
-        if config[DEFAULT_SAVE_DB_LEVEL] == 0:
-            return
-        
-        if config[SKIP_SAVE_DB_CONFIRM_MESSAGE] == True:
-            add_in_db_pr = config[DEFAULT_SAVE_DB_LEVEL]
-        else:                
-            input_msg = '请输入,放弃保存0，优先级(1~5)(默认为3)，6自定义\n>>> '
+        print(colored(word + ' 不在本地，从有道词典查询', 'white', 'on_red'))
+        search_online(word)
+        if config[SHOW_SAVE_DB_CONFIRM_MESSAGE] == True:
+            input_msg = '若存入本地，请输入优先级(1~5) ，否则 Enter 跳过\n>>> '
             if sys.version_info[0] == 2:
                 add_in_db_pr = raw_input(input_msg)
             else:
                 add_in_db_pr = input(input_msg)
+        else:
+            add_in_db_pr = config[DEFAULT_SAVE_DB_LEVEL]
 
         if add_in_db_pr and add_in_db_pr.isdigit():
-            if int(add_in_db_pr) >= 1 and int(add_in_db_pr) <= 5:
-                add_word(word, word_dict, word_sql, int(add_in_db_pr))
-            elif 0 == int(add_in_db_pr):
-                print("won't insert %s into database" %(word))
-            elif 6 == int(add_in_db_pr):
-                add_word_self(word, word_dict, word_sql, word_parser, 6)
-
-        else:
-            add_word(word, word_dict, word_sql, 3)
+            if(int(add_in_db_pr) >= 1 and int(add_in_db_pr) <= 5):
+                add_word(word, int(add_in_db_pr))
+                print(colored('单词 {word} 已加入数据库中'.format(word=word), 'white', 'on_red'))
+    curs.close()
+    conn.close()
 
 
-def add_word_self(word, word_dict, word_sql, word_parser, default_pr):
+def add_word(word, default_pr):
     '''add the word or phrase to database.'''
-    input_msg = "please input word meaning\n"
-    update_flag = 0
-    if sys.version_info[0] == 2:
-        word_basic = raw_input(input_msg)
-    else:
-        word_basic = input(input_msg)
 
-    if add_word(word, word_dict, word_sql, default_pr):
-        word_sql.update_word("user_defined='%s', pr=%d" % (word_basic, default_pr), 
-                                "name='%s'" % (word))
-
-def add_word(word, word_dict, word_sql, default_pr):
-    '''add the word or phrase to database.'''
-    count = word_sql.count_word("name = '%s'" % word)
-    if count > 0:
-        #update : 这里可以提示是否更新，如果有某个字段不一致或者上次查询时间比较旧
+    conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
+    curs = conn.cursor()
+    curs.execute('SELECT expl, pr FROM Word WHERE name = "%s"' % word)
+    res = curs.fetchall()
+    if res:
         print(colored(word + ' 在数据库中已存在，不需要添加', 'white', 'on_red'))
         sys.exit()
 
-    if "name" not in word_dict:
-        word_dict["name"] = word
-    if "pr" not in word_dict:
-        word_dict["pr"] = default_pr
-    #update: 这里可以添加模糊查询,通过某个参数指定，先显示近似查询，然后选择某一个后，再具体查询
-    return word_sql.insert_word(word_dict)
+    try:
+        expl = search_online(word, printer=False)
+        curs.execute('insert into word(name, expl, pr, aset) values ("%s", "%s", %d, "%s")' % (
+            word, expl, default_pr, word[0].upper()))
+    except Exception as e:
+        print(colored('something\'s wrong, you can\'t add the word', 'white', 'on_red'))
+        print(e)
+    else:
+        conn.commit()
+        print(colored('%s has been inserted into database' % word, 'green'))
+    finally:
+        curs.close()
+        conn.close()
 
 
-def delete_word(word, word_sql):
-    '''delete the word or phrase from database. fix bug'''
-    count = word_sql.count_word("name='%s'" % word)
-    if count:
-        word_sql.delete_word("name='%s'" % word)
+def delete_word(word):
+    '''delete the word or phrase from database.'''
+
+    conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
+    curs = conn.cursor()
+    # search fisrt
+    curs.execute('SELECT expl, pr FROM Word WHERE name = "%s"' % word)
+    res = curs.fetchall()
+
+    if res:
+        try:
+            curs.execute('DELETE FROM Word WHERE name = "%s"' % word)
+        except Exception as e:
+            print(e)
+        else:
+            print(colored('%s has been deleted from database' % word, 'green'))
+            conn.commit()
+        finally:
+            curs.close()
+            conn.close()
     else:
         print(colored('%s not exists in the database' % word, 'white', 'on_red'))
 
 
-def set_priority(word, pr, word_sql):
+def set_priority(word, pr):
     '''
     set the priority of the word.
     priority(from 1 to 5) is the importance of the word.
     '''
-    count = word_sql.count_word("name='%s'" % word)
-    if count:
-        if word_sql.update_word("pr=%d", "name='%s'" % (pr, word)):
-            print(colored('the priority of  %s has been reset to  %s' % (word, pr), 'green'))
-        else:
+
+    conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
+    curs = conn.cursor()
+    curs.execute('SELECT expl, pr FROM Word WHERE name = "%s"' % word)
+    res = curs.fetchall()
+    if res:
+        try:
+            curs.execute('UPDATE Word SET pr= %d WHERE name = "%s"' % (pr, word))
+        except Exception as e:
             print(colored('something\'s wrong, you can\'t reset priority', 'white', 'on_red'))
+            print(e)
+        else:
+            print(colored('the priority of  %s has been reset to  %s' % (word, pr), 'green'))
+            conn.commit()
+        finally:
+            curs.close()
+            conn.close()
     else:
         print(colored('%s not exists in the database' % word, 'white', 'on_red'))
 
-def list_priority(pr, word_sql, displayer, vb=False, output=False):
+
+def list_letter(aset, vb=False, output=False):
+    '''list words by letter, from a-z (ingore case).'''
+
+    conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
+    curs = conn.cursor()
+    try:
+        if not vb:
+            curs.execute('SELECT name, pr FROM Word WHERE aset = "%s"' % aset)
+        else:
+            curs.execute('SELECT expl, pr FROM Word WHERE aset = "%s"' % aset)
+    except Exception as e:
+        print(colored('something\'s wrong, catlog is from A to Z', 'red'))
+        print(e)
+    else:
+        if not output:
+            print(colored(format(aset, '-^40s'), 'green'))
+        else:
+            print(format(aset, '-^40s'))
+
+        for line in curs.fetchall():
+            expl = line[0]
+            pr = line[1]
+            print('\n' + '=' * 40 + '\n')
+            if not output:
+                print(colored('★ ' * pr, 'red', ), colored('☆ ' * (5 - pr), 'yellow'), sep='')
+                colorful_print(expl)
+            else:
+                print('★ ' * pr + '☆ ' * (5 - pr))
+                normal_print(expl)
+    finally:
+        curs.close()
+        conn.close()
+
+
+def list_priority(pr, vb=False, output=False):
     '''
     list words by priority, like this:
     1   : list words which the priority is 1,
     2+  : list words which the priority is lager than 2,
     3-4 : list words which the priority is from 3 to 4.
     '''
-    word_dict_list = []
-    if len(pr) == 1:
-        word_dict_list = word_sql.select_word("pr == %d ORDER by pr, name" % (int(pr[0])))
-    elif len(pr) == 2 and pr[1] == '+':
-        word_dict_list = word_sql.select_word("pr >= %d ORDER by pr, name" % (int(pr[0])))
-    elif len(pr) == 3 and pr[1] == '-':
-        word_dict_list = word_sql.select_word("pr >= %d AND pr <= %d ORDER by pr, name" % (int(pr[0]), int(pr[2])))
 
-    for word_dict in word_dict_list:
-        displayer.show(word_dict)
+    conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
+    curs = conn.cursor()
+
+    try:
+        if not vb:
+            if len(pr) == 1:
+                curs.execute('SELECT name, pr FROM Word WHERE pr ==  %d ORDER by pr, name' % (int(pr[0])))
+            elif len(pr) == 2 and pr[1] == '+':
+                curs.execute('SELECT name, pr FROM Word WHERE pr >=  %d ORDER by pr, name' % (int(pr[0])))
+            elif len(pr) == 3 and pr[1] == '-':
+                curs.execute('SELECT name, pr FROM Word WHERE pr >=  %d AND pr<=  % d ORDER by pr, name' % (
+                    int(pr[0]), int(pr[2])))
+        else:
+            if len(pr) == 1:
+                curs.execute('SELECT expl, pr FROM Word WHERE pr ==  %d ORDER by pr, name' % (int(pr[0])))
+            elif len(pr) == 2 and pr[1] == '+':
+                curs.execute('SELECT expl, pr FROM Word WHERE pr >=  %d ORDER by pr, name' % (int(pr[0])))
+            elif len(pr) == 3 and pr[1] == '-':
+                curs.execute('SELECT expl, pr FROM Word WHERE pr >=  %d AND pr<=  %d ORDER by pr, name' % (
+                    int(pr[0]), int(pr[2])))
+    except Exception as e:
+        print(colored('something\'s wrong, priority must be 1-5', 'red'))
+        print(e)
+    else:
+        for line in curs.fetchall():
+            expl = line[0]
+            pr = line[1]
+            print('\n' + '=' * 40 + '\n')
+            if not output:
+                print(colored('★ ' * pr, 'red', ), colored('☆ ' * (5 - pr), 'yellow'), sep='')
+                colorful_print(expl)
+            else:
+                print('★ ' * pr + '☆ ' * (5 - pr))
+                normal_print(expl)
+    finally:
+        curs.close()
+        conn.close()
 
 
-def list_latest(limit, word_sql, displayer, card=False, vb=False, output=False):
+def list_latest(limit, vb=False, output=False):
     '''list words by latest time you add to database.'''
-    
-    word_dict_list = word_sql.select_word("name is not NULL ORDER BY datatime(addtime) DESC LIMIT %d" % limit)
-    for word_dict in word_dict_list:
-        displayer.show(word_dict)
+
+    conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
+    curs = conn.cursor()
+    try:
+        if not vb:
+            curs.execute('SELECT name, pr, addtime FROM Word ORDER by datetime(addtime) DESC LIMIT  %d' % limit)
+        else:
+            curs.execute('SELECT expl, pr, addtime FROM Word ORDER by datetime(addtime) DESC LIMIT  %d' % limit)
+    except Exception as e:
+        print(e)
+        print(colored('something\'s wrong, please set the limit', 'red'))
+    else:
+        for line in curs.fetchall():
+            expl = line[0]
+            pr = line[1]
+            print('\n' + '=' * 40 + '\n')
+            if not output:
+                print(colored('★ ' * pr, 'red'), colored('☆ ' * (5 - pr), 'yellow'), sep='')
+                colorful_print(expl)
+            else:
+                print('★ ' * pr + '☆ ' * (5 - pr))
+                normal_print(expl)
+    finally:
+        curs.close()
+        conn.close()
 
 
-def list_review(word_sql, displayer, reviewer, is_card, is_output):
-    reviewer.add_interval_day(1)
-    reviewer.add_interval_day(3)
-    reviewer.add_interval_day(7)
-    
-    return reviewer.get_words(word_sql, displayer)
-
-
-
-
-def super_insert(input_file_path, word_parser):
+def super_insert(input_file_path):
     log_file_path = os.path.join(DEFAULT_PATH, 'log.txt')
     baseurl = 'http://dict.youdao.com/w/'
     word_list = open(input_file_path, 'r', encoding='utf-8')
@@ -188,12 +451,11 @@ def super_insert(input_file_path, word_parser):
         word = line.strip()
         print(word)
         url = baseurl + word
-        word_dict = word_parser.get_text(url)
+        expl = get_text(url)
         try:
             # insert into database.
-            curs.execute("INSERT INTO Word(name, synonyms, discriminate, word_group, collins, bilingual, fanyiToggle, pr, aset) VALUES \
-                         (\"%s\", \"%s\", \"%s\", %d, \"%s\")" \
-                         % (word, synonyms, discriminate, word_group, collins, bilingual, fanyiToggle, 1, word[0].upper()))
+            curs.execute("INSERT INTO Word(name, expl, pr, aset) VALUES (\"%s\", \"%s\", %d, \"%s\")" \
+                         % (word, expl, 1, word[0].upper()))
         except Exception as e:
             print(word, "can't insert into database")
             # save the error in log file.
@@ -206,20 +468,42 @@ def super_insert(input_file_path, word_parser):
     word_list.close()
 
 
-def register_argument(parser):
+def count_word(arg):
+    '''count the number of words'''
+
+    conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
+    curs = conn.cursor()
+    if arg[0].isdigit():
+        if len(arg) == 1:
+            curs.execute('SELECT count(*) FROM Word WHERE pr ==  %d' % (int(arg[0])))
+        elif len(arg) == 2 and arg[1] == '+':
+            curs.execute('SELECT count(*) FROM Word WHERE pr >=  %d' % (int(arg[0])))
+        elif len(arg) == 3 and arg[1] == '-':
+            curs.execute('SELECT count(*) FROM Word WHERE pr >=  %d AND pr<=  % d' % (int(arg[0]), int(arg[2])))
+    elif arg[0].isalpha():
+        if arg == 'all':
+            curs.execute('SELECT count(*) FROM Word')
+        elif len(arg) == 1:
+            curs.execute('SELECT count(*) FROM Word WHERE aset == "%s"' % arg.upper())
+    res = curs.fetchall()
+    print(res[0][0])
+    curs.close()
+    conn.close()
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Search words')
+
     parser.add_argument(dest='word', help='the word you want to search.', nargs='*')
+
+    parser.add_argument('-f', '--file', dest='file',
+                        action='store', help='add words list from text file.')
 
     parser.add_argument('-a', '--add', dest='add',
                         action='store', nargs='+', help='insert word into database.')
 
     parser.add_argument('-d', '--delete', dest='delete',
                         action='store', nargs='+', help='delete word from database.')
-
-    parser.add_argument('-c', '--card', dest='card',
-                        action='store_true', help='card mode.')
-
-    parser.add_argument('-f', '--file', dest='file',
-                        action='store', help='add words list from text file.')
 
     parser.add_argument('-s', '--set', dest='set',
                         action='store', help='set priority.')
@@ -233,44 +517,27 @@ def register_argument(parser):
     parser.add_argument('-p', '--priority', dest='priority',
                         action='store', help='list words by priority.')
 
-    parser.add_argument('-r', '--review', dest='review',
-                        action='store_true', help='review words by time class')
-
     parser.add_argument('-t', '--time', dest='time',
                         action='store', help='list words by time.')
 
+    parser.add_argument('-l', '--letter', dest='letter',
+                        action='store', help='list words by letter.')
 
-
-def main():
-    # 显示模式设置
-    displayer = Displayer()
-    # 设置解析模式
-    word_parser = Parser()
-    # 设置复习模式
-    reviewer = Reviewer()
-    # 数据库连接
-    word_sql = Word_sql()
-
-    parser = argparse.ArgumentParser(description='Search words')
-
-    register_argument(parser)
+    parser.add_argument('-c', '--count', dest='count',
+                        action='store', help='count the word.')
 
     args = parser.parse_args()
     is_verbose = args.verbose
     is_output = args.output
-    is_card = args.card
 
-    #设置参数，可以每次打开，可以根据查询次数，对单词进行权重排序，提示复习
-    #或者手动输入命令更新优先级
-    #应该能支持不同显示版本
+    config = getConfig()
 
     if args.add:
-        #这个用于导入批量单词，基本还是用查询
         default_pr = 1 if not args.set else int(args.set)
-        #add_word(' '.join(args.add), None, default_pr)
+        add_word(' '.join(args.add), default_pr)
 
     elif args.delete:
-        delete_word(' '.join(args.delete), word_sql)
+        delete_word(' '.join(args.delete))
 
     elif args.set:
         number = args.set
@@ -279,34 +546,44 @@ def main():
             sys.exit()
         priority = int(number)
         if args.word:
-            set_priority(' '.join(args.word), priority, word_sql)
+            set_priority(' '.join(args.word), priority)
         else:
             print(colored('please set the priority', 'white', 'on_red'))
 
+    elif args.letter:
+        list_letter(args.letter[0].upper(), is_verbose, is_output)
+
     elif args.time:
         limit = int(args.time)
-        list_latest(limit, word_sql, displayer, is_card, is_verbose, is_output)
-
-    elif args.review:
-        list_review(word_sql, displayer, reviewer, is_card, is_output)
-
+        list_latest(limit, is_verbose, is_output)
 
     elif args.priority:
-        list_priority(args.priority, word_sql, displayer, is_verbose, is_output)
+        list_priority(args.priority, is_verbose, is_output)
 
     elif args.file:
         input_file_path = args.file
         if input_file_path.endswith('.txt'):
-            super_insert(input_file_path, word_parser)
+            super_insert(input_file_path)
         elif input_file_path == 'default':
-            super_insert(os.path.join(DEFAULT_PATH, 'word_list.txt'), word_parser)
+            super_insert(os.path.join(DEFAULT_PATH, 'word_list.txt'))
         else:
             print(colored('please use a correct path of text file', 'white', 'on_red'))
+    elif args.count:
+        count_word(args.count)
 
     elif args.word:
+        if not os.path.exists(os.path.join(DEFAULT_PATH, 'word.db')):
+            os.mkdir(DEFAULT_PATH)
+            with open(os.path.join(DEFAULT_PATH, 'word_list.txt'), 'w') as f:
+                pass
+            conn = sqlite3.connect(os.path.join(DEFAULT_PATH, 'word.db'))
+            curs = conn.cursor()
+            curs.execute(CREATE_TABLE_WORD)
+            conn.commit()
+            curs.close()
+            conn.close()
         word = ' '.join(args.word)
-        config = getConfig()
-        search_word(word, word_parser, word_sql, displayer, config)
+        search_database(word, config)
 
 
 if __name__ == '__main__':
