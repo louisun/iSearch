@@ -2,7 +2,8 @@ import os
 import sqlite3
 from termcolor import colored
 from iSearch.display import colorful_print, normal_print
-from iSearch.webio import get_text, search_online
+from iSearch.webio import search_online
+from iSearch.config import getConfig, SHOW_SAVE_DB_CONFIRM_MESSAGE, DEFAULT_SAVE_DB_LEVEL
 
 # Default database path is ~/.iSearch.
 DEFAULT_DB_DIRECTORY_PATH = os.path.join(os.path.expanduser('~'), '.iSearch')
@@ -239,7 +240,6 @@ def list_latest(limit, vb=False, output=False):
 
 def super_insert(input_file_path):
     log_file_path = os.path.join(DEFAULT_DB_DIRECTORY_PATH, 'log.txt')
-    baseurl = 'http://dict.youdao.com/w/'
     word_list = open(input_file_path, 'r', encoding='utf-8')
     log_file = open(log_file_path, 'w', encoding='utf-8')
 
@@ -249,8 +249,7 @@ def super_insert(input_file_path):
     for line in word_list.readlines():
         word = line.strip()
         print(word)
-        url = baseurl + word
-        expl = get_text(url)
+        expl = search_online(word, False)
         try:
             # insert into database.
             curs.execute("INSERT INTO Word(name, expl, pr, aset) VALUES (\"%s\", \"%s\", %d, \"%s\")" \
