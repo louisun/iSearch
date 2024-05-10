@@ -16,7 +16,7 @@ def get_text(url):
     }
 
     config = getConfig()
-    if config[PROXY]:
+    if PROXY in config and config[PROXY]:
         proxies = {
             'http': config[PROXY],
             'https': config[PROXY]
