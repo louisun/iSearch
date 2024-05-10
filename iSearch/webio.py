@@ -2,7 +2,7 @@ import requests
 import bs4
 import re
 from .display import colorful_print, normal_print
-from .config import getConfig, PROXY
+from .config import getConfig, PROXY_SETTING
 
 def get_text(url):
     my_headers = {
@@ -16,10 +16,10 @@ def get_text(url):
     }
 
     config = getConfig()
-    if config[PROXY]:
+    if config[PROXY_SETTING]:
         proxies = {
-            'http': config[PROXY],
-            'https': config[PROXY]
+            'http': config[PROXY_SETTING],
+            'https': config[PROXY_SETTING]
         }
         res = requests.get(url, headers=my_headers, proxies=proxies)
     else:

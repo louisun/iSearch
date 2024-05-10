@@ -2,12 +2,12 @@ import os
 
 SHOW_SAVE_DB_CONFIRM_MESSAGE = "SHOW_SAVE_DB_CONFIRM_MESSAGE"
 DEFAULT_SAVE_DB_LEVEL = "DEFAULT_SAVE_DB_LEVEL"
-PROXY = "PROXY"
+PROXY_SETTING = "PROXY"
 
 DEFAULT_CONFIG = {
     SHOW_SAVE_DB_CONFIRM_MESSAGE : False,
     DEFAULT_SAVE_DB_LEVEL: "3",
-    PROXY: None
+    PROXY_SETTING: None
 }
 
 CONFIG_FILE_DIRECTORIES = [
@@ -46,8 +46,8 @@ def setDefaultConfig(config):
         config[SHOW_SAVE_DB_CONFIRM_MESSAGE] = DEFAULT_CONFIG[SHOW_SAVE_DB_CONFIRM_MESSAGE]
     if DEFAULT_SAVE_DB_LEVEL not in config:
         config[DEFAULT_SAVE_DB_LEVEL] = DEFAULT_CONFIG[DEFAULT_SAVE_DB_LEVEL]
-    if PROXY not in config:
-        config[PROXY] = None
+    if PROXY_SETTING not in config:
+        config[PROXY_SETTING] = None
     return config
 
 def getConfig():
