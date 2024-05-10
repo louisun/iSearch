@@ -2,10 +2,12 @@ import os
 
 SHOW_SAVE_DB_CONFIRM_MESSAGE = "SHOW_SAVE_DB_CONFIRM_MESSAGE"
 DEFAULT_SAVE_DB_LEVEL = "DEFAULT_SAVE_DB_LEVEL"
+PROXY = "PROXY"
 
 DEFAULT_CONFIG = {
     SHOW_SAVE_DB_CONFIRM_MESSAGE : False,
-    DEFAULT_SAVE_DB_LEVEL: "3"
+    DEFAULT_SAVE_DB_LEVEL: "3",
+    PROXY: None
 }
 
 CONFIG_FILE_DIRECTORIES = [
@@ -30,18 +32,19 @@ def parseConfigFile(configFile):
         for line in lines:
             if line.startswith("#") or len(line) == 0:
                 continue
-            key, value = line.split("=")
-            key, value = key.strip(), value.strip()
-            if value.lower() == "true":
-                value = True
-            elif value.lower() == "false":
-                value = False
-            config[key] = value
+            key, value = map(str.strip, line.split("="))
+            config[key] = True if value.lower() == "true" else False
     
+    config = setDefaultConfig(config)
+    return config
+
+def setDefaultConfig(config):
     if SHOW_SAVE_DB_CONFIRM_MESSAGE not in config:
         config[SHOW_SAVE_DB_CONFIRM_MESSAGE] = DEFAULT_CONFIG[SHOW_SAVE_DB_CONFIRM_MESSAGE]
     if DEFAULT_SAVE_DB_LEVEL not in config:
         config[DEFAULT_SAVE_DB_LEVEL] = DEFAULT_CONFIG[DEFAULT_SAVE_DB_LEVEL]
+    if PROXY not in config:
+        config[PROXY] = None
     return config
 
 def getConfig():
