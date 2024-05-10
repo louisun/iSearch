@@ -1,9 +1,9 @@
 import os
 import sqlite3
 from termcolor import colored
-from iSearch.display import colorful_print, normal_print
-from iSearch.webio import search_online
-from iSearch.config import getConfig, SHOW_SAVE_DB_CONFIRM_MESSAGE, DEFAULT_SAVE_DB_LEVEL
+from .display import colorful_print, normal_print
+from .webio import search_online
+from .config import getConfig, SHOW_SAVE_DB_CONFIRM_MESSAGE, DEFAULT_SAVE_DB_LEVEL
 
 # Default database path is ~/.iSearch.
 DEFAULT_DB_DIRECTORY_PATH = os.path.join(os.path.expanduser('~'), '.iSearch')

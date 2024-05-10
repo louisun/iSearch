@@ -3,9 +3,9 @@ from __future__ import print_function, unicode_literals
 import sys
 import argparse
 import os
-from iSearch.config import getConfig, SHOW_SAVE_DB_CONFIRM_MESSAGE, DEFAULT_SAVE_DB_LEVEL
-from iSearch.db import DEFAULT_DB_DIRECTORY_PATH, CREATE_TABLE_WORD
-from iSearch.db import search_database, add_word, delete_word, set_priority, list_letter, list_latest, list_priority, super_insert, count_word
+from .config import getConfig, SHOW_SAVE_DB_CONFIRM_MESSAGE, DEFAULT_SAVE_DB_LEVEL
+from .db import DEFAULT_DB_DIRECTORY_PATH, CREATE_TABLE_WORD
+from .db import search_database, add_word, delete_word, set_priority, list_letter, list_latest, list_priority, super_insert, count_word
 
 # Python2 compatibility
 if sys.version_info[0] == 2:

@@ -1,8 +1,8 @@
 import requests
 import bs4
 import re
-from iSearch.display import colorful_print, normal_print
-from iSearch.config import getConfig, PROXY
+from .display import colorful_print, normal_print
+from .config import getConfig, PROXY
 
 def get_text(url):
     my_headers = {
