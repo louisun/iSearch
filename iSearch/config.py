@@ -36,7 +36,7 @@ def parseConfigFile(configFile):
             if line.startswith("#") or len(line) == 0:
                 continue
             key, value = map(str.strip, line.split("="))
-            config[key] = True if value.lower() == "true" else False
+            config[key] = True if value.lower() == "true" else False if value.lower() == "false" else value
     
     config = setDefaultConfig(config)
     return config
