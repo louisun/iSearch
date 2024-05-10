@@ -18,6 +18,8 @@ CONFIG_FILE_DIRECTORIES = [
     os.getenv("ISEARCH_CONF", "NotFound") # add fault tolerance
 ]
 
+config = None
+
 '''
     simple parser to parse key-value format file to avoid introduce new library
     eg.
@@ -25,6 +27,7 @@ CONFIG_FILE_DIRECTORIES = [
         defaultSaveDbLevel=3
 '''
 def parseConfigFile(configFile):
+    global config
     config = {}
     with open(configFile, 'r') as reader:
         rawConfig = reader.read()
@@ -48,6 +51,10 @@ def setDefaultConfig(config):
     return config
 
 def getConfig():
+    global config
+    if config is not None
+        return config
+
     # https://stackoverflow.com/questions/7567642/where-to-put-a-configuration-file-in-python
     for loc in CONFIG_FILE_DIRECTORIES:
         try: 
