@@ -1,3 +1,6 @@
+import requests
+import bs4
+import re
 from iSearch.display import colorful_print, normal_print
 
 def get_text(url):
@@ -147,6 +150,7 @@ def get_text(url):
 def search_online(word, printer=True):
     '''search the word or phrase on http://dict.youdao.com.'''
 
+    # interesting, either ' %s' or '%s' can be used
     url = 'http://dict.youdao.com/w/ %s' % word
 
     expl = get_text(url)

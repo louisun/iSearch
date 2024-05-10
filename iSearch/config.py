@@ -52,7 +52,7 @@ def setDefaultConfig(config):
 
 def getConfig():
     global config
-    if config is not None
+    if config is not None:
         return config
 
     # https://stackoverflow.com/questions/7567642/where-to-put-a-configuration-file-in-python
