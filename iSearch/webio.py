@@ -2,6 +2,7 @@ import requests
 import bs4
 import re
 from iSearch.display import colorful_print, normal_print
+from iSearch.config import getConfig, PROXY
 
 def get_text(url):
     my_headers = {
@@ -13,7 +14,17 @@ def get_text(url):
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) \
                        Chrome/48.0.2564.116 Safari/537.36'
     }
-    res = requests.get(url, headers=my_headers)
+
+    config = getConfig()
+    if config[PROXY]:
+        proxies = {
+            'http': config[PROXY],
+            'https': config[PROXY]
+        }
+        res = requests.get(url, headers=my_headers, proxies=proxies)
+    else:
+        res = requests.get(url, headers=my_headers)
+
     data = res.text
     soup = bs4.BeautifulSoup(data, 'html.parser')
     expl = ''
