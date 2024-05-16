@@ -16,9 +16,14 @@
 ## 安装与设置
 
 原版
+```
 	pip install iSearch
+```
+
 Fork Version
+```
     pip install git+https://github.com/candywater/iSearch
+```
 
 **常见问题：**
 
