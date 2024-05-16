@@ -17,34 +17,18 @@
 
 原版
 ```
-	pip install iSearch
+pip install iSearch
 ```
 
 Fork Version
 ```
-    pip install git+https://github.com/candywater/iSearch
-```
-
-**常见问题：**
-
-默认命令是`s`，若被其他程序使用，可将`iSearch`目录下相应文件`alias`为其他名字。
-
-如果找不到`s` 命令，请看以下内容，否则跳过：
-
-Linux 下默认 pip 可能将包安装到`~/.local/lib/python3.6` 下，`s` 可执行文件会放在`~/.local/bin` 下。
-
-如果没将`~/.local/bin` 放入`PATH`， 可能会导致找不到命令。
-
-提示找不到`s`命令的可在的`~/.bashrc`或`~/.zshrc`中加入这行：
-
-```bash
-export PATH="$PATH:$HOME/.local/bin"
+pip install git+https://github.com/candywater/iSearch
 ```
 
 --- 
 
 
-配置文件位置
+## 配置文件位置
 ```
 ./iSearch.txt # source file folder
 ~/.iSearch/iSearch.txt # default path 
@@ -53,7 +37,7 @@ export PATH="$PATH:$HOME/.local/bin"
 $ISEARCH_CONF/iSearch.txt # system environment parameter
 ```
 
-配置文件(例子）
+### 配置文件(例子）
 
 ```INI
 SHOW_SAVE_DB_CONFIRM_MESSAGE = False
@@ -67,26 +51,6 @@ DockerFile (for debug)
 docker build --tag 'isearch' .
 docker run --rm isearch cool
 ```
-
-
-
-
-如果你嫌每次滚动很多屏，要翻上去才能看麻烦，也可选择安装`1.0.0`版，并且配合`less` 命令翻滚查看
-
-可选择将下面的函数放在`.bashrc` 或`.zshrc`中（不适用于最新版，适用于1.0.0版）
-
-```bash
-function s(){
-    local spath="你的 s 命令路径" # 可用 which s 查看, 比如 ~/.local/bin/s
-    if [[ ${1:0:1} != '-' ]]
-    then
-        $spath $* | less 
-    else
-        $spath $*
-    fi
-}
-```
-
 
 ## 简介
 
@@ -289,6 +253,42 @@ s -c 2-3
 #  列出全部单词数目
 s -c all
 ```
+
+## FAQ
+**常见问题：**
+
+默认命令是`s`，若被其他程序使用，可将`iSearch`目录下相应文件`alias`为其他名字。
+
+如果找不到`s` 命令，请看以下内容，否则跳过：
+
+Linux 下默认 pip 可能将包安装到`~/.local/lib/python3.6` 下，`s` 可执行文件会放在`~/.local/bin` 下。
+
+如果没将`~/.local/bin` 放入`PATH`， 可能会导致找不到命令。
+
+提示找不到`s`命令的可在的`~/.bashrc`或`~/.zshrc`中加入这行：
+
+```bash
+export PATH="$PATH:$HOME/.local/bin"
+```
+
+## tips
+如果你嫌每次滚动很多屏，要翻上去才能看麻烦，配合`less` 命令翻滚查看
+
+可选择将下面的函数放在`.bashrc` 或`.zshrc`中（不适用于最新版，适用于1.0.0版）
+
+```bash
+function s(){
+    local spath="你的 s 命令路径" # 可用 which s 查看, 比如 ~/.local/bin/s
+    if [[ ${1:0:1} != '-' ]]
+    then
+        $spath $* | less 
+    else
+        $spath $*
+    fi
+}
+```
+
+
 
 ## LICENSE
 
