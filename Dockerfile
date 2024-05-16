@@ -12,4 +12,6 @@ RUN python -m pip install .
 # RUN echo 0 | s apple
 
 ENTRYPOINT ["/usr/local/bin/s"]
- 
+
+#ENTRYPOINT ["tail"]
+#CMD ["-f","/dev/null"]
