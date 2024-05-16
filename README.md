@@ -9,6 +9,7 @@
 - v1.0.2 with readme [#06013d6](https://github.com/candywater/iSearch/commit/06013d610338397f8cdd69f330b43e1ee8d29f1b)
 - v1.0.4 [#af232b8](https://github.com/candywater/iSearch/commit/af232b8ef5db114c3df35c2fc6ed113f222371de) 追加config file功能
 - v1.0.5 追加proxy功能，在```~/.config/iSearch/iSearch.txt``` 配置 ```PROXY```
+- v1.0.6 追加dockerfile
 
 ---
 
@@ -35,11 +36,32 @@ export PATH="$PATH:$HOME/.local/bin"
 --- 
 
 
-如果你嫌最新版每次提示保存烦，毕竟不是每个单词都想记下来，可重新安装 1.0.0 版本，用下面的命令
-
-```bash
-pip install iSearch==1.0.0
+配置文件位置
 ```
+./iSearch.txt # source file folder
+~/.iSearch/iSearch.txt # default path 
+~/.config/iSearch/iSearch.txt
+/etc/iSearch/iSearch.txt
+$ISEARCH_CONF/iSearch.txt # system environment parameter
+```
+
+配置文件(例子）
+
+```INI
+SHOW_SAVE_DB_CONFIRM_MESSAGE = False
+DEFAULT_SAVE_DB_LEVEL = 3
+PROXY = 127.0.0.1:7890
+```
+
+DockerFile (for debug)
+
+```
+docker build --tag 'isearch' .
+docker run -it --rm isearch cool
+```
+
+
+
 
 如果你嫌每次滚动很多屏，要翻上去才能看麻烦，也可选择安装`1.0.0`版，并且配合`less` 命令翻滚查看
 
