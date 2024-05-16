@@ -57,7 +57,7 @@ DockerFile (for debug)
 
 ```
 docker build --tag 'isearch' .
-docker run -it --rm isearch cool
+docker run --rm isearch cool
 ```
 
 
