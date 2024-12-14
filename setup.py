@@ -19,7 +19,7 @@ setup(
     author_email='luyang.sun@outlook.com',
     description='有道词典单词查询、存储和管理的命令行工具',
     install_requires=[
-        'requests==2.31.0','termcolor==2.4.0','bs4==0.0.2'
+        'requests==2.32.2','termcolor==2.4.0','bs4==0.0.2'
     ],
     entry_points = {
         'console_scripts': [
