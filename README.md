@@ -4,56 +4,53 @@
 内容来自[网易有道词典](http://dict.youdao.com/)。
 
 
-- v1.0.0 兼容 Python2、Python3 
-- v1.0.2 优化查询流程：查询后会自动提示是否存入本地 
+- v1.0.0 [#9b5bd2b](https://github.com/candywater/iSearch/commit/9b5bd2b477a57a65da749ace015b09ba1adc6908) 兼容 Python2、Python3 
+- v1.0.2 [#4ffdeee](https://github.com/candywater/iSearch/commit/4ffdeee88533adf34209113cc8ad1de48e94e62a) 优化查询流程：查询后会自动提示是否存入本地 
+- v1.0.2 with readme [#06013d6](https://github.com/candywater/iSearch/commit/06013d610338397f8cdd69f330b43e1ee8d29f1b)
+- v1.0.4 [#af232b8](https://github.com/candywater/iSearch/commit/af232b8ef5db114c3df35c2fc6ed113f222371de) 追加config file功能
+- v1.0.5 追加proxy功能，在```~/.config/iSearch/iSearch.txt``` 配置 ```PROXY```
+- v1.0.6 追加dockerfile
 
 ---
 
 ## 安装与设置
 
-	pip install iSearch
+原版
+```
+pip install iSearch
+```
 
-**常见问题：**
-
-默认命令是`s`，若被其他程序使用，可将`iSearch`目录下相应文件`alias`为其他名字。
-
-如果找不到`s` 命令，请看以下内容，否则跳过：
-
-Linux 下默认 pip 可能将包安装到`~/.local/lib/python3.6` 下，`s` 可执行文件会放在`~/.local/bin` 下。
-
-如果没将`~/.local/bin` 放入`PATH`， 可能会导致找不到命令。
-
-提示找不到`s`命令的可在的`~/.bashrc`或`~/.zshrc`中加入这行：
-
-```bash
-export PATH="$PATH:$HOME/.local/bin"
+Fork Version
+```
+pip install git+https://github.com/candywater/iSearch
 ```
 
 --- 
 
 
-如果你嫌最新版每次提示保存烦，毕竟不是每个单词都想记下来，可重新安装 1.0.0 版本，用下面的命令
-
-```bash
-pip install iSearch==1.0.0
+## 配置文件位置
+```
+./iSearch.txt # source file folder
+~/.iSearch/iSearch.txt # default path 
+~/.config/iSearch/iSearch.txt
+/etc/iSearch/iSearch.txt
+$ISEARCH_CONF/iSearch.txt # system environment parameter
 ```
 
-如果你嫌每次滚动很多屏，要翻上去才能看麻烦，也可选择安装`1.0.0`版，并且配合`less` 命令翻滚查看
+### 配置文件(例子）
 
-可选择将下面的函数放在`.bashrc` 或`.zshrc`中（不适用于最新版，适用于1.0.0版）
-
-```bash
-function s(){
-    local spath="你的 s 命令路径" # 可用 which s 查看, 比如 ~/.local/bin/s
-    if [[ ${1:0:1} != '-' ]]
-    then
-        $spath $* | less 
-    else
-        $spath $*
-    fi
-}
+```INI
+SHOW_SAVE_DB_CONFIRM_MESSAGE = False
+DEFAULT_SAVE_DB_LEVEL = 3
+PROXY = 127.0.0.1:7890
 ```
 
+DockerFile (for debug)
+
+```
+docker build --tag 'isearch' .
+docker run --rm isearch cool
+```
 
 ## 简介
 
@@ -97,13 +94,15 @@ function s(){
 >
 >-t     --time     列出最近加入的n个单词
 >
+>-l     --catalog    列出A-Z开头的单词目录
+>
 >-s     --set        设置单词的优先级
 >
 >-v     --verbose    查看详细信息
 >
 >-o      -output     输出模式
 
->-ca     --card      显示单词名和基本信息
+
 
 
 
@@ -254,6 +253,42 @@ s -c 2-3
 #  列出全部单词数目
 s -c all
 ```
+
+## FAQ
+**常见问题：**
+
+默认命令是`s`，若被其他程序使用，可将`iSearch`目录下相应文件`alias`为其他名字。
+
+如果找不到`s` 命令，请看以下内容，否则跳过：
+
+Linux 下默认 pip 可能将包安装到`~/.local/lib/python3.6` 下，`s` 可执行文件会放在`~/.local/bin` 下。
+
+如果没将`~/.local/bin` 放入`PATH`， 可能会导致找不到命令。
+
+提示找不到`s`命令的可在的`~/.bashrc`或`~/.zshrc`中加入这行：
+
+```bash
+export PATH="$PATH:$HOME/.local/bin"
+```
+
+## tips
+如果你嫌每次滚动很多屏，要翻上去才能看麻烦，配合`less` 命令翻滚查看
+
+可选择将下面的函数放在`.bashrc` 或`.zshrc`中（不适用于最新版，适用于1.0.0版）
+
+```bash
+function s(){
+    local spath="你的 s 命令路径" # 可用 which s 查看, 比如 ~/.local/bin/s
+    if [[ ${1:0:1} != '-' ]]
+    then
+        $spath $* | less 
+    else
+        $spath $*
+    fi
+}
+```
+
+
 
 ## LICENSE
 
